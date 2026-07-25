@@ -14,6 +14,10 @@ let chartIPAQ = null;
 let lastSearchResult = null;
 let currentSection = 'cek-hasil';
 
+const keteranganPeserta = {
+    '034': 'Rute lari kurang'
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
@@ -237,6 +241,16 @@ function cariDataIndividu() {
         document.getElementById('hasilPencarian').style.display = 'block';
         document.getElementById('hasilBIB').textContent = `BIB: ${peserta.bib || '-'}`;
         document.getElementById('hasilNama').textContent = peserta.nama;
+        const ketEl = document.getElementById('hasilKeterangan');
+        if (ketEl) {
+            if (keteranganPeserta[peserta.bib]) {
+                ketEl.textContent = keteranganPeserta[peserta.bib];
+                ketEl.style.display = 'block';
+            } else {
+                ketEl.textContent = '';
+                ketEl.style.display = 'none';
+            }
+        }
 
         if (peserta.imt) {
             document.getElementById('hasilIMT').textContent = peserta.imt.toFixed(2);
@@ -436,7 +450,7 @@ function updateTable() {
 
         const row = [
             p.bib || '-',
-            p.nama,
+            keteranganPeserta[p.bib] ? `${p.nama}<br><small class="text-muted fst-italic">${keteranganPeserta[p.bib]}</small>` : p.nama,
             p.usia || '-',
             p.jenisKelamin === 'Laki-laki' ? 'L' : (p.jenisKelamin === 'Perempuan' ? 'P' : '-'),
             p.waktuTempuh || '-',
@@ -561,10 +575,6 @@ function renderRanking() {
     }
 
     const genderLabel = { 'L': 'Laki-Laki', 'P': 'Perempuan' };
-
-    const keteranganPeserta = {
-        '034': 'Rute lari kurang'
-    };
 
     ['L', 'P'].forEach(g => {
         const tbody = g === 'L' ? tbodyL : tbodyP;
