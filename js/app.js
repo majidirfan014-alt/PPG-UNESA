@@ -564,7 +564,17 @@ function renderRanking() {
             return g === 'L' ? (jk === 'laki-laki' || jk === 'l' || jk === 'laki') : (jk === 'perempuan' || jk === 'p' || jk === 'wanita');
         });
 
-        const sorted = genderData.sort((a, b) => (b.vo2max || 0) - (a.vo2max || 0));
+        const kategoriOrder = { 'Istimewa': 0, 'Sangat Baik': 1, 'Baik': 2, 'Sedang': 3, 'Kurang': 4, 'Kurang Sekali': 5 };
+        const getOrder = (p) => {
+            const k = p.kategoriKebugaran || '';
+            return kategoriOrder[k] !== undefined ? kategoriOrder[k] : 6;
+        };
+        const sorted = genderData.sort((a, b) => {
+            const orderA = getOrder(a);
+            const orderB = getOrder(b);
+            if (orderA !== orderB) return orderA - orderB;
+            return (b.vo2max || 0) - (a.vo2max || 0);
+        });
 
         if (sorted.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Belum ada data ${genderLabel[g]}</td></tr>`;
