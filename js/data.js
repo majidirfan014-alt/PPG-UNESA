@@ -26,16 +26,26 @@ const DataStore = {
                     this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     this._ready = true;
                     console.log(`[DataStore] Snapshot: ${this._cache.length} records`);
-                    // Auto-refresh UI if callback registered
                     if (this._onUpdate) this._onUpdate();
                 }, err => {
-                    console.error('[DataStore] Snapshot error:', err);
-                    const fallback = localStorage.getItem('ppg_fitness_data');
-                    this._cache = fallback ? JSON.parse(fallback) : [];
-                    this._ready = true;
+                    console.warn('[DataStore] Snapshot error, using fallback:', err.message || err);
+                    if (!this._ready) {
+                        const fallback = localStorage.getItem('ppg_fitness_data');
+                        this._cache = fallback ? JSON.parse(fallback) : [];
+                        this._ready = true;
+                    }
                 });
+                // Safety: if onSnapshot never fires, force ready after 5s
+                setTimeout(() => {
+                    if (!this._ready) {
+                        console.warn('[DataStore] Timeout, forcing ready');
+                        const fallback = localStorage.getItem('ppg_fitness_data');
+                        this._cache = fallback ? JSON.parse(fallback) : [];
+                        this._ready = true;
+                    }
+                }, 5000);
             } catch (err) {
-                console.error('[DataStore] Firestore init failed, falling back to localStorage:', err);
+                console.error('[DataStore] Firestore init failed:', err);
                 const fallback = localStorage.getItem('ppg_fitness_data');
                 this._cache = fallback ? JSON.parse(fallback) : [];
                 this._ready = true;
@@ -302,17 +312,17 @@ const DatabasePeserta = {
     init(db) {
         this._db = db;
         return new Promise((resolve) => {
+            let resolved = false;
             this._db.collection(this.COLLECTION).onSnapshot(snapshot => {
                 this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 console.log(`[DatabasePeserta] Snapshot: ${this._cache.length} records`);
-                // Auto-refresh dropdown if it exists
                 if (typeof loadDropdownPeserta === 'function') loadDropdownPeserta();
-                resolve(); // resolve on first snapshot
+                if (!resolved) { resolved = true; resolve(); }
             }, err => {
-                console.error('[DatabasePeserta] Snapshot error:', err);
-                this._cache = [];
-                resolve();
+                console.warn('[DatabasePeserta] Snapshot error:', err.message || err);
+                if (!resolved) { resolved = true; resolve(); }
             });
+            setTimeout(() => { if (!resolved) { resolved = true; resolve(); } }, 5000);
         });
     },
 
