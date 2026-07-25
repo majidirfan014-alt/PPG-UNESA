@@ -141,6 +141,6 @@ function getWarnaIMT(kategori) {
 function getWarnaIPAQ(kategori) {
     if (!kategori) return 'text-secondary';
     if (['Rendah (Kurang Aktif)'].includes(kategori)) return 'text-danger';
-    if (['Sedang (Cukup Aktif)'].includes(kategori)) return 'text-warning';
+    if (['Sedang', 'Sedang (Cukup Aktif)'].includes(kategori)) return 'text-warning';
     return 'text-success';
 }

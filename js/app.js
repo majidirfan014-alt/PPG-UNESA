@@ -75,6 +75,14 @@ function recalcVO2(p) {
     return { vo2: (vo2 && vo2 > 0) ? vo2 : null, kategori };
 }
 
+function recalcIPAQ(p) {
+    if (p.ipaq_v_days != null || p.ipaq_v_min != null || p.ipaq_m_days != null || p.ipaq_m_min != null || p.ipaq_w_days != null || p.ipaq_w_min != null) {
+        const r = Calculations.hitungIPAQ(p.ipaq_v_days || 0, p.ipaq_v_min || 0, p.ipaq_m_days || 0, p.ipaq_m_min || 0, p.ipaq_w_days || 0, p.ipaq_w_min || 0);
+        return { totalMET: r.total_met, kategoriIPAQ: r.kategori };
+    }
+    return { totalMET: p.totalMET, kategoriIPAQ: p.kategoriIPAQ };
+}
+
 // ==================== SECTION NAVIGATION ====================
 
 function showSection(sectionId) {
@@ -270,7 +278,7 @@ function showSaranFromSearch() {
                     <tr><td class="text-muted">Usia</td><td>${peserta.usia || '-'} tahun</td></tr>
                     <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio((() => { const r = recalcVO2(peserta); return r.kategori; })())}">${(() => { const r = recalcVO2(peserta); return r.vo2 ? r.vo2.toFixed(2) + ' ml/kg/min' : '-'; })()}</td></tr>
                     <tr><td class="text-muted">IMT</td><td>${peserta.imt ? peserta.imt.toFixed(1) : '-'}</td></tr>
-                    <tr><td class="text-muted">Total MET</td><td>${peserta.totalMET != null && peserta.totalMET !== '' ? peserta.totalMET : '-'}</td></tr>
+                    <tr><td class="text-muted">Total MET</td><td>${(() => { const ipaq = recalcIPAQ(peserta); return ipaq.totalMET != null && ipaq.totalMET !== '' ? ipaq.totalMET : '-'; })()}</td></tr>
                 </table>
             </div>
             <div class="col-md-6">
@@ -278,7 +286,7 @@ function showSaranFromSearch() {
                 <div class="d-flex flex-column gap-2">
                     <div>${renderStatusBadge('Kardio', peserta.kategoriKebugaran, 'fa-heartbeat', getWarnaKardio(peserta.kategoriKebugaran))}</div>
                     <div>${renderStatusBadge('Postur', peserta.kategoriIMT, 'fa-weight', getWarnaIMT(peserta.kategoriIMT))}</div>
-                    <div>${renderStatusBadge('Aktivitas', peserta.kategoriIPAQ, 'fa-person-walking', getWarnaIPAQ(peserta.kategoriIPAQ))}</div>
+                    <div>${renderStatusBadge('Aktivitas', (() => { const ipaq = recalcIPAQ(peserta); return ipaq.kategoriIPAQ; })(), 'fa-person-walking', getWarnaIPAQ((() => { const ipaq = recalcIPAQ(peserta); return ipaq.kategoriIPAQ; })()))}</div>
                 </div>
             </div>
         </div>
@@ -419,6 +427,7 @@ function updateTable() {
         }
 
         const { vo2, kategori } = recalcVO2(p);
+        const ipaq = recalcIPAQ(p);
 
         const row = [
             p.bib || '-',
@@ -433,9 +442,9 @@ function updateTable() {
             p.imt ? p.imt.toFixed(1) : '-',
             p.kategoriIMT ?
                 `<span class="badge badge-kategori ${getBadgeClass(p.kategoriIMT)}">${p.kategoriIMT}</span>` : '-',
-            p.totalMET != null && p.totalMET !== '' ? p.totalMET : '-',
-            p.kategoriIPAQ ?
-                `<span class="badge badge-kategori ${getBadgeClassIPAQ(p.kategoriIPAQ)}">${p.kategoriIPAQ}</span>` : '-',
+            ipaq.totalMET != null && ipaq.totalMET !== '' ? ipaq.totalMET : '-',
+            ipaq.kategoriIPAQ ?
+                `<span class="badge badge-kategori ${getBadgeClassIPAQ(ipaq.kategoriIPAQ)}">${ipaq.kategoriIPAQ}</span>` : '-',
             `<button class="btn btn-info btn-sm" onclick="showInfoPeserta('${p.id}')"><i class="fas fa-info-circle"></i></button>`
         ];
         dataTable.row.add(row);
@@ -487,13 +496,14 @@ function updateCharts() {
     chartVO2.data.datasets[0].data = [vo2Dist['Istimewa'], vo2Dist['Sangat Baik'], vo2Dist['Baik'], vo2Dist['Sedang'], vo2Dist['Kurang'], vo2Dist['Kurang Sekali']];
     chartVO2.update();
 
-    const ipaqDist = { 'Tinggi (Aktif)': 0, 'Sedang (Cukup Aktif)': 0, 'Rendah (Kurang Aktif)': 0 };
+    const ipaqDist = { 'Tinggi (Aktif)': 0, 'Sedang': 0, 'Sedang (Cukup Aktif)': 0, 'Rendah (Kurang Aktif)': 0 };
     data.forEach(p => {
-        if (p.kategoriIPAQ) {
-            ipaqDist[p.kategoriIPAQ] = (ipaqDist[p.kategoriIPAQ] || 0) + 1;
+        const ipaq = recalcIPAQ(p);
+        if (ipaq.kategoriIPAQ) {
+            ipaqDist[ipaq.kategoriIPAQ] = (ipaqDist[ipaq.kategoriIPAQ] || 0) + 1;
         }
     });
-    chartIPAQ.data.datasets[0].data = [ipaqDist['Tinggi (Aktif)'], ipaqDist['Sedang (Cukup Aktif)'], ipaqDist['Rendah (Kurang Aktif)']];
+    chartIPAQ.data.datasets[0].data = [ipaqDist['Tinggi (Aktif)'], ipaqDist['Sedang'] + ipaqDist['Sedang (Cukup Aktif)'], ipaqDist['Rendah (Kurang Aktif)']];
     chartIPAQ.update();
 }
 
@@ -615,7 +625,7 @@ function showInfoPeserta(id) {
                     <tr><td class="text-muted">Usia</td><td>${peserta.usia || '-'} tahun</td></tr>
                     <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio((() => { const r = recalcVO2(peserta); return r.kategori; })())}">${(() => { const r = recalcVO2(peserta); return r.vo2 ? r.vo2.toFixed(2) + ' ml/kg/min' : '-'; })()}</td></tr>
                     <tr><td class="text-muted">IMT</td><td>${peserta.imt ? peserta.imt.toFixed(1) : '-'}</td></tr>
-                    <tr><td class="text-muted">Total MET</td><td>${peserta.totalMET != null && peserta.totalMET !== '' ? peserta.totalMET : '-'}</td></tr>
+                    <tr><td class="text-muted">Total MET</td><td>${(() => { const ipaq = recalcIPAQ(peserta); return ipaq.totalMET != null && ipaq.totalMET !== '' ? ipaq.totalMET : '-'; })()}</td></tr>
                 </table>
             </div>
             <div class="col-md-6">
@@ -623,7 +633,7 @@ function showInfoPeserta(id) {
                 <div class="d-flex flex-column gap-2">
                     <div>${renderStatusBadge('Kardio', peserta.kategoriKebugaran, 'fa-heartbeat', getWarnaKardio(peserta.kategoriKebugaran))}</div>
                     <div>${renderStatusBadge('Postur', peserta.kategoriIMT, 'fa-weight', getWarnaIMT(peserta.kategoriIMT))}</div>
-                    <div>${renderStatusBadge('Aktivitas', peserta.kategoriIPAQ, 'fa-person-walking', getWarnaIPAQ(peserta.kategoriIPAQ))}</div>
+                    <div>${renderStatusBadge('Aktivitas', (() => { const ipaq = recalcIPAQ(peserta); return ipaq.kategoriIPAQ; })(), 'fa-person-walking', getWarnaIPAQ((() => { const ipaq = recalcIPAQ(peserta); return ipaq.kategoriIPAQ; })()))}</div>
                 </div>
             </div>
         </div>
@@ -878,6 +888,7 @@ function getBadgeClass(kategori) {
 function getBadgeClassIPAQ(kategori) {
     const classes = {
         'Tinggi (Aktif)': 'bg-success',
+        'Sedang': 'bg-primary',
         'Sedang (Cukup Aktif)': 'bg-primary',
         'Rendah (Kurang Aktif)': 'bg-danger'
     };

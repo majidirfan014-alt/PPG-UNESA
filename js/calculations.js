@@ -132,6 +132,41 @@ const Calculations = {
         }
     },
 
+    truncateMinutes(min) {
+        if (min > 180) return 180;
+        if (min < 10) return 0;
+        return min;
+    },
+
+    hitungIPAQ(v_days, v_min, m_days, m_min, w_days, w_min) {
+        const v_min_t = this.truncateMinutes(v_min);
+        const m_min_t = this.truncateMinutes(m_min);
+        const w_min_t = this.truncateMinutes(w_min);
+
+        const met_vigorous = 8.0 * v_min_t * v_days;
+        const met_moderate = 4.0 * m_min_t * m_days;
+        const met_walking = 3.3 * w_min_t * w_days;
+        const total_met = met_vigorous + met_moderate + met_walking;
+        const total_days = v_days + m_days + w_days;
+
+        let kategori;
+        if ((v_days >= 3 && total_met >= 1500) || (total_days >= 7 && total_met >= 3000)) {
+            kategori = 'Tinggi (Aktif)';
+        } else if (
+            (v_days >= 3 && v_min_t >= 20) ||
+            (m_min_t >= 30 && w_min_t >= 30 && (m_days + w_days) >= 5) ||
+            (m_min_t >= 30 && m_days >= 5) ||
+            (w_min_t >= 30 && w_days >= 5) ||
+            (total_days >= 5 && total_met >= 600)
+        ) {
+            kategori = 'Sedang';
+        } else {
+            kategori = 'Rendah (Kurang Aktif)';
+        }
+
+        return { total_met: Math.round(total_met), kategori };
+    },
+
     /**
      * Mendapatkan warna badge berdasarkan kategori
      * @param {string} kategori 

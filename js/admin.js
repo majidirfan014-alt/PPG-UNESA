@@ -581,19 +581,7 @@ function importIPAQ() {
                 const hariJalan = parseIPAQValue(item['Hari Jalan Kaki'] || item['hari_jalan']);
                 const menitJalan = parseIPAQValue(item['Menit Jalan Kaki'] || item['menit_jalan']);
 
-                const metBerat = 8.0 * hariBerat * menitBerat;
-                const metSedang = 4.0 * hariSedang * menitSedang;
-                const metJalan = 3.3 * hariJalan * menitJalan;
-                const totalMET = metBerat + metSedang + metJalan;
-                
-                let kategori = "";
-                if (totalMET >= 3000 || (hariBerat >= 3 && metBerat >= 1500)) {
-                    kategori = "Tinggi (Aktif)";
-                } else if (totalMET >= 600) {
-                    kategori = "Sedang (Cukup Aktif)";
-                } else {
-                    kategori = "Rendah (Kurang Aktif)";
-                }
+                const result = Calculations.hitungIPAQ(hariBerat, menitBerat, hariSedang, menitSedang, hariJalan, menitJalan);
                 
                 const nama = item['Nama'] || item['nama'];
                 if (nama) {
@@ -601,8 +589,14 @@ function importIPAQ() {
                     const peserta = allData.find(p => p.nama.toLowerCase() === nama.toLowerCase());
                     if (peserta) {
                         DataStore.update(peserta.id, {
-                            totalMET: totalMET,
-                            kategoriIPAQ: kategori
+                            totalMET: result.total_met,
+                            kategoriIPAQ: result.kategori,
+                            ipaq_v_days: hariBerat,
+                            ipaq_v_min: menitBerat,
+                            ipaq_m_days: hariSedang,
+                            ipaq_m_min: menitSedang,
+                            ipaq_w_days: hariJalan,
+                            ipaq_w_min: menitJalan
                         });
                     }
                 }
@@ -773,58 +767,29 @@ let dataPeserta = [];
 // MET values: Walking=3.3, Moderate=4.0, Vigorous=8.0
 // Formula: MET-min/week = MET × menit/hari × hari/minggu
 function kalkulasiIPAQ(hariBerat, menitBerat, hariSedang, menitSedang, hariJalan, menitJalan) {
-    // Hitung MET-min/week per domain
-    const metBerat = 8.0 * (hariBerat || 0) * (menitBerat || 0);
-    const metSedang = 4.0 * (hariSedang || 0) * (menitSedang || 0);
-    const metJalan = 3.3 * (hariJalan || 0) * (menitJalan || 0);
-    const totalMET = metBerat + metSedang + metJalan;
+    const result = Calculations.hitungIPAQ(hariBerat || 0, menitBerat || 0, hariSedang || 0, menitSedang || 0, hariJalan || 0, menitJalan || 0);
 
-    // Total hari aktivitas (semua jenis)
-    const totalHari = (hariBerat || 0) + (hariSedang || 0) + (hariJalan || 0);
+    const v_min_t = Calculations.truncateMinutes(menitBerat || 0);
+    const m_min_t = Calculations.truncateMinutes(menitSedang || 0);
+    const w_min_t = Calculations.truncateMinutes(menitJalan || 0);
 
-    let kategori = "";
-    let warnaBadge = "";
+    const metBerat = 8.0 * v_min_t * (hariBerat || 0);
+    const metSedang = 4.0 * m_min_t * (hariSedang || 0);
+    const metJalan = 3.3 * w_min_t * (hariJalan || 0);
 
-    // Kategori 3 (Tinggi/Aktif) - Kriteria A atau B:
-    // A: Aktivitas Berat ≥3 hari/minggu DAN total ≥1500 MET-min/week
-    // B: ≥7 hari/minggu aktivitas apapun DAN total ≥3000 MET-min/week
-    const kriteriaTinggiA = (hariBerat || 0) >= 3 && metBerat >= 1500;
-    const kriteriaTinggiB = totalHari >= 7 && totalMET >= 3000;
-
-    if (kriteriaTinggiA || kriteriaTinggiB) {
-        kategori = "Tinggi (Aktif)";
-        warnaBadge = "bg-success";
-    }
-    // Kategori 2 (Sedang/Cukup Aktif) - Kriteria A atau B atau C:
-    // A: Aktivitas Berat ≥3 hari/minggu DAN ≥20 menit/hari
-    // B: Aktivitas Sedang/Jalan ≥5 hari/minggu DAN ≥30 menit/hari
-    // C: ≥5 hari/minggu aktivitas apapun DAN total ≥600 MET-min/week
-    else if ((hariBerat || 0) >= 3 && (menitBerat || 0) >= 20) {
-        kategori = "Sedang (Cukup Aktif)";
-        warnaBadge = "bg-primary";
-    } else if ((hariSedang || 0) >= 5 && (menitSedang || 0) >= 30) {
-        kategori = "Sedang (Cukup Aktif)";
-        warnaBadge = "bg-primary";
-    } else if ((hariJalan || 0) >= 5 && (menitJalan || 0) >= 30) {
-        kategori = "Sedang (Cukup Aktif)";
-        warnaBadge = "bg-primary";
-    } else if (totalHari >= 5 && totalMET >= 600) {
-        kategori = "Sedang (Cukup Aktif)";
-        warnaBadge = "bg-primary";
-    }
-    // Kategori 1 (Rendah/Kurang Aktif)
-    else {
-        kategori = "Rendah (Kurang Aktif)";
-        warnaBadge = "bg-danger";
-    }
+    const warnaMap = {
+        'Tinggi (Aktif)': 'bg-success',
+        'Sedang': 'bg-primary',
+        'Rendah (Kurang Aktif)': 'bg-danger'
+    };
 
     return {
-        total: totalMET.toFixed(1),
-        metBerat: metBerat.toFixed(1),
-        metSedang: metSedang.toFixed(1),
-        metJalan: metJalan.toFixed(1),
-        kategori: kategori,
-        warna: warnaBadge
+        total: String(result.total_met),
+        metBerat: String(metBerat),
+        metSedang: String(metSedang),
+        metJalan: String(metJalan),
+        kategori: result.kategori,
+        warna: warnaMap[result.kategori] || 'bg-secondary'
     };
 }
 
@@ -945,8 +910,14 @@ function prosesImportExcel() {
                         kategoriKebugaran: '-',
                         imt: parseFloat(imt),
                         kategoriIMT: Calculations.getKategoriIMT(parseFloat(imt)),
-                        totalMET: parseFloat(hasilIPAQ.total),
+                        totalMET: hasilIPAQ.total_met,
                         kategoriIPAQ: hasilIPAQ.kategori,
+                        ipaq_v_days: q3,
+                        ipaq_v_min: q4,
+                        ipaq_m_days: q5,
+                        ipaq_m_min: q6,
+                        ipaq_w_days: q7,
+                        ipaq_w_min: q8,
                         jenisTes: 'baru'
                     };
                     DataStore.add(pesertaForLanding);
