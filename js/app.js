@@ -63,6 +63,18 @@ function setupEventListeners() {
     document.getElementById('filterTanggalRanking').addEventListener('change', updateRanking);
 }
 
+function recalcVO2(p) {
+    let vo2 = p.vo2max;
+    let kategori = p.kategoriKebugaran;
+    if ((!vo2 || vo2 <= 0 || isNaN(vo2)) && p.waktuMenit != null && p.hr > 0 && p.bb > 0 && p.usia > 0) {
+        const g = p.gender !== undefined ? p.gender : (p.jenisKelamin === 'Perempuan' ? 0 : 1);
+        vo2 = Calculations.hitungVO2Max(p.bb, p.usia, g, p.waktuMenit, p.waktuDetik || 0, p.hr);
+        vo2 = Math.round(vo2 * 100) / 100;
+        if (vo2 > 0) kategori = Calculations.getKategoriKebugaran(vo2, p.usia, g);
+    }
+    return { vo2: (vo2 && vo2 > 0) ? vo2 : null, kategori };
+}
+
 // ==================== SECTION NAVIGATION ====================
 
 function showSection(sectionId) {
@@ -224,11 +236,13 @@ function cariDataIndividu() {
             document.getElementById('hasilKetIMT').className = 'badge bg-secondary';
         }
 
-        if (peserta.vo2max && peserta.vo2max > 0) {
-            document.getElementById('hasilVO2').textContent = peserta.vo2max.toFixed(2) + ' ml/kg/min';
+        const { vo2, kategori } = recalcVO2(peserta);
+
+        if (vo2) {
+            document.getElementById('hasilVO2').textContent = vo2.toFixed(2) + ' ml/kg/min';
             const badgeVO2 = document.getElementById('hasilKetVO2');
-            badgeVO2.textContent = peserta.kategoriKebugaran || '-';
-            badgeVO2.className = `badge ${getBadgeClass(peserta.kategoriKebugaran)}`;
+            badgeVO2.textContent = kategori || '-';
+            badgeVO2.className = `badge ${getBadgeClass(kategori)}`;
         } else {
             document.getElementById('hasilVO2').textContent = 'Belum tes';
             document.getElementById('hasilKetVO2').textContent = '-';
@@ -254,7 +268,7 @@ function showSaranFromSearch() {
                 <table class="table table-sm table-borderless mb-0">
                     <tr><td class="text-muted" style="width:40%">Nama</td><td class="fw-semibold">${peserta.nama}</td></tr>
                     <tr><td class="text-muted">Usia</td><td>${peserta.usia || '-'} tahun</td></tr>
-                    <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio(peserta.kategoriKebugaran)}">${peserta.vo2max && peserta.vo2max > 0 ? peserta.vo2max.toFixed(2) + ' ml/kg/min' : '-'}</td></tr>
+                    <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio((() => { const r = recalcVO2(peserta); return r.kategori; })())}">${(() => { const r = recalcVO2(peserta); return r.vo2 ? r.vo2.toFixed(2) + ' ml/kg/min' : '-'; })()}</td></tr>
                     <tr><td class="text-muted">IMT</td><td>${peserta.imt ? peserta.imt.toFixed(1) : '-'}</td></tr>
                     <tr><td class="text-muted">Total MET</td><td>${peserta.totalMET != null && peserta.totalMET !== '' ? peserta.totalMET : '-'}</td></tr>
                 </table>
@@ -404,6 +418,8 @@ function updateTable() {
             hrDisplay = '<span class="text-muted">-</span>';
         }
 
+        const { vo2, kategori } = recalcVO2(p);
+
         const row = [
             p.bib || '-',
             p.nama,
@@ -411,9 +427,9 @@ function updateTable() {
             p.jenisKelamin === 'Laki-laki' ? 'L' : (p.jenisKelamin === 'Perempuan' ? 'P' : '-'),
             p.waktuTempuh || '-',
             hrDisplay,
-            p.vo2max && p.vo2max > 0 ? `<strong>${p.vo2max}</strong>` : '<span class="text-muted">-</span>',
-            p.kategoriKebugaran && p.kategoriKebugaran !== '-' ?
-                `<span class="badge badge-kategori ${getBadgeClass(p.kategoriKebugaran)}">${p.kategoriKebugaran}</span>` : '<span class="text-muted">-</span>',
+            vo2 ? `<strong>${vo2}</strong>` : '<span class="text-muted">-</span>',
+            kategori && kategori !== '-' ?
+                `<span class="badge badge-kategori ${getBadgeClass(kategori)}">${kategori}</span>` : '<span class="text-muted">-</span>',
             p.imt ? p.imt.toFixed(1) : '-',
             p.kategoriIMT ?
                 `<span class="badge badge-kategori ${getBadgeClass(p.kategoriIMT)}">${p.kategoriIMT}</span>` : '-',
@@ -597,7 +613,7 @@ function showInfoPeserta(id) {
                 <table class="table table-sm table-borderless mb-0">
                     <tr><td class="text-muted" style="width:40%">Nama</td><td class="fw-semibold">${peserta.nama}</td></tr>
                     <tr><td class="text-muted">Usia</td><td>${peserta.usia || '-'} tahun</td></tr>
-                    <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio(peserta.kategoriKebugaran)}">${peserta.vo2max && peserta.vo2max > 0 ? peserta.vo2max.toFixed(2) + ' ml/kg/min' : '-'}</td></tr>
+                    <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio((() => { const r = recalcVO2(peserta); return r.kategori; })())}">${(() => { const r = recalcVO2(peserta); return r.vo2 ? r.vo2.toFixed(2) + ' ml/kg/min' : '-'; })()}</td></tr>
                     <tr><td class="text-muted">IMT</td><td>${peserta.imt ? peserta.imt.toFixed(1) : '-'}</td></tr>
                     <tr><td class="text-muted">Total MET</td><td>${peserta.totalMET != null && peserta.totalMET !== '' ? peserta.totalMET : '-'}</td></tr>
                 </table>
