@@ -420,7 +420,7 @@ function updateTable() {
             p.totalMET != null && p.totalMET !== '' ? p.totalMET : '-',
             p.kategoriIPAQ ?
                 `<span class="badge badge-kategori ${getBadgeClassIPAQ(p.kategoriIPAQ)}">${p.kategoriIPAQ}</span>` : '-',
-            `<button class="btn btn-info btn-sm" onclick="showInfoPeserta(${p.id})"><i class="fas fa-info-circle"></i></button>`
+            `<button class="btn btn-info btn-sm" onclick="showInfoPeserta('${p.id}')"><i class="fas fa-info-circle"></i></button>`
         ];
         dataTable.row.add(row);
     });
