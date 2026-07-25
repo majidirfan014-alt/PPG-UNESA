@@ -129,25 +129,26 @@ const DataStore = {
         this._cache = [...data];
         this._persist();
         if (!this._db) return Promise.resolve();
+        // Upsert: set each doc by ID. No delete — onSnapshot never sees empty state.
+        const allOps = [];
+        for (let i = 0; i < data.length; i += 499) {
+            const chunk = data.slice(i, i + 499);
+            const batch = this._db.batch();
+            chunk.forEach(item => {
+                const clean = { ...item };
+                const docId = String(clean.id);
+                delete clean.id;
+                batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
+            });
+            allOps.push(batch.commit());
+        }
+        // Also delete docs that are no longer in data (removed records)
+        const dataIds = new Set(data.map(d => String(d.id)));
         return this._db.collection(this.COLLECTION).get().then(snapshot => {
-            const allOps = [];
-            // Delete existing in chunks
-            for (let i = 0; i < snapshot.docs.length; i += 499) {
-                const chunk = snapshot.docs.slice(i, i + 499);
+            const toDelete = snapshot.docs.filter(doc => !dataIds.has(doc.id));
+            for (let i = 0; i < toDelete.length; i += 499) {
                 const batch = this._db.batch();
-                chunk.forEach(doc => batch.delete(doc.ref));
-                allOps.push(batch.commit());
-            }
-            // Add new in chunks
-            for (let i = 0; i < data.length; i += 499) {
-                const chunk = data.slice(i, i + 499);
-                const batch = this._db.batch();
-                chunk.forEach(item => {
-                    const clean = { ...item };
-                    const docId = String(clean.id);
-                    delete clean.id;
-                    batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
-                });
+                toDelete.slice(i, i + 499).forEach(doc => batch.delete(doc.ref));
                 allOps.push(batch.commit());
             }
             return Promise.all(allOps);
@@ -326,24 +327,27 @@ const DatabasePeserta = {
     save(data) {
         this._cache = [...data];
         localStorage.setItem('ppg_database_peserta', JSON.stringify(this._cache));
-        if (!this._db) return;
+        if (!this._db) return Promise.resolve();
+        const allOps = [];
+        // Upsert each doc by ID — no delete
+        for (let i = 0; i < data.length; i += 499) {
+            const chunk = data.slice(i, i + 499);
+            const batch = this._db.batch();
+            chunk.forEach(item => {
+                const clean = { ...item };
+                const docId = String(clean.id || clean.bib || Date.now());
+                delete clean.id;
+                batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
+            });
+            allOps.push(batch.commit());
+        }
+        // Delete removed docs
+        const dataIds = new Set(data.map(d => String(d.id || d.bib)));
         return this._db.collection(this.COLLECTION).get().then(snapshot => {
-            const allOps = [];
-            for (let i = 0; i < snapshot.docs.length; i += 499) {
-                const chunk = snapshot.docs.slice(i, i + 499);
+            const toDelete = snapshot.docs.filter(doc => !dataIds.has(doc.id));
+            for (let i = 0; i < toDelete.length; i += 499) {
                 const batch = this._db.batch();
-                chunk.forEach(doc => batch.delete(doc.ref));
-                allOps.push(batch.commit());
-            }
-            for (let i = 0; i < data.length; i += 499) {
-                const chunk = data.slice(i, i + 499);
-                const batch = this._db.batch();
-                chunk.forEach(item => {
-                    const clean = { ...item };
-                    const docId = String(clean.id || Date.now());
-                    delete clean.id;
-                    batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
-                });
+                toDelete.slice(i, i + 499).forEach(doc => batch.delete(doc.ref));
                 allOps.push(batch.commit());
             }
             return Promise.all(allOps);

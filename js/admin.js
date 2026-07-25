@@ -325,7 +325,11 @@ function loadDropdownPeserta() {
     const list = document.getElementById('dropdownListPeserta');
     if (!list) return;
     list.innerHTML = '';
-    DatabasePeserta._cache.forEach(p => {
+    // Filter out records without name, sort by BIB ascending
+    const validRecords = DatabasePeserta._cache
+        .filter(p => p.nama && p.nama.trim())
+        .sort((a, b) => String(a.bib || '').localeCompare(String(b.bib || ''), undefined, { numeric: true }));
+    validRecords.forEach(p => {
         const div = document.createElement('div');
         div.className = 'dd-item';
         div.setAttribute('data-bib', p.bib);
@@ -1153,7 +1157,7 @@ function prosesImportDataLama() {
                 const kategoriIMT = imt > 0 ? Calculations.getKategoriIMT(imt) : '-';
 
                 const pesertaLama = {
-                    id: Date.now() + i,
+                    id: Date.now() + '_' + i,
                     bib: '',
                     nama: namaLama,
                     usia: usia,
@@ -1175,7 +1179,15 @@ function prosesImportDataLama() {
                     jenisTes: 'lama'
                 };
 
-                allData.push(pesertaLama);
+                // Anti-duplicate: update existing lama record by name, don't add new
+                const existingIdx = allData.findIndex(d => 
+                    d.jenisTes === 'lama' && d.nama && d.nama.toLowerCase().trim() === namaLama.toLowerCase().trim()
+                );
+                if (existingIdx !== -1) {
+                    allData[existingIdx] = { ...allData[existingIdx], ...pesertaLama, id: allData[existingIdx].id };
+                } else {
+                    allData.push(pesertaLama);
+                }
                 addCount++;
 
                 detailResults.push({
