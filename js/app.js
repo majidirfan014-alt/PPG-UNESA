@@ -562,6 +562,10 @@ function renderRanking() {
 
     const genderLabel = { 'L': 'Laki-Laki', 'P': 'Perempuan' };
 
+    const keteranganPeserta = {
+        '034': 'Rute lari kurang'
+    };
+
     ['L', 'P'].forEach(g => {
         const tbody = g === 'L' ? tbodyL : tbodyP;
         const genderData = filteredData.filter(p => {
@@ -607,7 +611,7 @@ function renderRanking() {
             return `<tr>
                 <td class="text-center">${rankBadge}</td>
                 <td class="text-center"><span class="badge bg-primary">${p.bib || '-'}</span></td>
-                <td class="text-start">${p.nama}</td>
+                <td class="text-start">${p.nama}${keteranganPeserta[p.bib] ? `<br><small class="text-muted fst-italic">${keteranganPeserta[p.bib]}</small>` : ''}</td>
                 <td class="text-center">${p.tglTes || '-'}</td>
                 <td class="text-center">${p.usia || '-'}</td>
                 <td class="text-center">${g}</td>
