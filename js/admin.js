@@ -1189,14 +1189,12 @@ function prosesImportDataLama() {
                 });
             }
 
-            DataStore.saveAll(allData);
-
-            refreshAll();
-
-            showToast(`Import Data Lama selesai! ${addCount} data lama berhasil ditambahkan.`);
-            fileInput.value = '';
-
-            window.location.href = 'index.html#perbandingan';
+            DataStore.saveAll(allData).then(() => {
+                refreshAll();
+                showToast(`Import Data Lama selesai! ${addCount} data lama berhasil ditambahkan.`);
+                fileInput.value = '';
+                window.location.href = 'index.html#perbandingan';
+            });
 
         } catch (error) {
             console.error('Error importing data lama:', error);

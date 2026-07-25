@@ -118,32 +118,48 @@ const DataStore = {
     saveAll(data) {
         this._cache = [...data];
         this._persist();
-        // Re-sync all to Firestore
-        if (this._db) {
-            const batch = this._db.batch();
-            this._db.collection(this.COLLECTION).get().then(snapshot => {
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                data.forEach(item => {
+        if (!this._db) return Promise.resolve();
+        return this._db.collection(this.COLLECTION).get().then(snapshot => {
+            const allOps = [];
+            // Delete existing in chunks
+            for (let i = 0; i < snapshot.docs.length; i += 499) {
+                const chunk = snapshot.docs.slice(i, i + 499);
+                const batch = this._db.batch();
+                chunk.forEach(doc => batch.delete(doc.ref));
+                allOps.push(batch.commit());
+            }
+            // Add new in chunks
+            for (let i = 0; i < data.length; i += 499) {
+                const chunk = data.slice(i, i + 499);
+                const batch = this._db.batch();
+                chunk.forEach(item => {
                     const clean = { ...item };
                     const docId = String(clean.id);
                     delete clean.id;
                     batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
                 });
-                return batch.commit();
-            }).catch(err => console.error('[DataStore] Bulk save error:', err));
-        }
+                allOps.push(batch.commit());
+            }
+            return Promise.all(allOps);
+        }).then(() => {
+            console.log('[DataStore] saveAll completed');
+        }).catch(err => console.error('[DataStore] Bulk save error:', err));
     },
 
     clearAll() {
         this._cache = [];
         this._persist();
-        if (this._db) {
-            this._db.collection(this.COLLECTION).get().then(snapshot => {
+        if (!this._db) return;
+        this._db.collection(this.COLLECTION).get().then(snapshot => {
+            const allOps = [];
+            for (let i = 0; i < snapshot.docs.length; i += 499) {
+                const chunk = snapshot.docs.slice(i, i + 499);
                 const batch = this._db.batch();
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                return batch.commit();
-            }).catch(err => console.error('[DataStore] Clear error:', err));
-        }
+                chunk.forEach(doc => batch.delete(doc.ref));
+                allOps.push(batch.commit());
+            }
+            return Promise.all(allOps);
+        }).catch(err => console.error('[DataStore] Clear error:', err));
     },
 
     getCount() {
@@ -294,30 +310,43 @@ const DatabasePeserta = {
     save(data) {
         this._cache = [...data];
         localStorage.setItem('ppg_database_peserta', JSON.stringify(this._cache));
-        if (this._db) {
-            this._db.collection(this.COLLECTION).get().then(snapshot => {
+        if (!this._db) return;
+        return this._db.collection(this.COLLECTION).get().then(snapshot => {
+            const allOps = [];
+            for (let i = 0; i < snapshot.docs.length; i += 499) {
+                const chunk = snapshot.docs.slice(i, i + 499);
                 const batch = this._db.batch();
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                data.forEach(item => {
+                chunk.forEach(doc => batch.delete(doc.ref));
+                allOps.push(batch.commit());
+            }
+            for (let i = 0; i < data.length; i += 499) {
+                const chunk = data.slice(i, i + 499);
+                const batch = this._db.batch();
+                chunk.forEach(item => {
                     const clean = { ...item };
                     const docId = String(clean.id || Date.now());
                     delete clean.id;
                     batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
                 });
-                return batch.commit();
-            }).catch(err => console.error('[DatabasePeserta] Save error:', err));
-        }
+                allOps.push(batch.commit());
+            }
+            return Promise.all(allOps);
+        }).catch(err => console.error('[DatabasePeserta] Save error:', err));
     },
 
     clear() {
         this._cache = [];
         localStorage.removeItem('ppg_database_peserta');
-        if (this._db) {
-            this._db.collection(this.COLLECTION).get().then(snapshot => {
+        if (!this._db) return;
+        this._db.collection(this.COLLECTION).get().then(snapshot => {
+            const allOps = [];
+            for (let i = 0; i < snapshot.docs.length; i += 499) {
+                const chunk = snapshot.docs.slice(i, i + 499);
                 const batch = this._db.batch();
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                return batch.commit();
-            }).catch(err => console.error('[DatabasePeserta] Clear error:', err));
-        }
+                chunk.forEach(doc => batch.delete(doc.ref));
+                allOps.push(batch.commit());
+            }
+            return Promise.all(allOps);
+        }).catch(err => console.error('[DatabasePeserta] Clear error:', err));
     }
 };
