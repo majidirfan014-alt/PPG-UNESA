@@ -32,6 +32,7 @@ function migrateDataIds() {
 
 async function initializeApp() {
     await DataStore.init();
+    DataStore._onUpdate = () => { refreshAll(); };
     migrateDataIds();
     initDataTable();
     initCharts();

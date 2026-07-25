@@ -15,15 +15,25 @@ const DataStore = {
      * Initialize Firestore connection and load data into cache.
      * Must be called once before any data access.
      */
+    _onUpdate: null,
+
     init() {
         if (this._initPromise) return this._initPromise;
         this._initPromise = (async () => {
             try {
                 this._db = firebase.firestore();
-                const snapshot = await this._db.collection(this.COLLECTION).get();
-                this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this._ready = true;
-                console.log(`[DataStore] Loaded ${this._cache.length} records from Firestore`);
+                this._db.collection(this.COLLECTION).onSnapshot(snapshot => {
+                    this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    this._ready = true;
+                    console.log(`[DataStore] Snapshot: ${this._cache.length} records`);
+                    // Auto-refresh UI if callback registered
+                    if (this._onUpdate) this._onUpdate();
+                }, err => {
+                    console.error('[DataStore] Snapshot error:', err);
+                    const fallback = localStorage.getItem('ppg_fitness_data');
+                    this._cache = fallback ? JSON.parse(fallback) : [];
+                    this._ready = true;
+                });
             } catch (err) {
                 console.error('[DataStore] Firestore init failed, falling back to localStorage:', err);
                 const fallback = localStorage.getItem('ppg_fitness_data');
@@ -290,12 +300,18 @@ const DatabasePeserta = {
 
     init(db) {
         this._db = db;
-        return this._db.collection(this.COLLECTION).get().then(snapshot => {
-            this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            console.log(`[DatabasePeserta] Loaded ${this._cache.length} records`);
-        }).catch(err => {
-            console.error('[DatabasePeserta] Load error:', err);
-            this._cache = [];
+        return new Promise((resolve) => {
+            this._db.collection(this.COLLECTION).onSnapshot(snapshot => {
+                this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log(`[DatabasePeserta] Snapshot: ${this._cache.length} records`);
+                // Auto-refresh dropdown if it exists
+                if (typeof loadDropdownPeserta === 'function') loadDropdownPeserta();
+                resolve(); // resolve on first snapshot
+            }, err => {
+                console.error('[DatabasePeserta] Snapshot error:', err);
+                this._cache = [];
+                resolve();
+            });
         });
     },
 
