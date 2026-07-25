@@ -455,48 +455,65 @@ function simpanWaktuDanHR() {
     const peserta = DatabasePeserta._cache.find(p => p.bib === bib);
     if (!peserta) { alert('Peserta tidak ditemukan!'); return; }
 
+    if (!peserta.bb || peserta.bb <= 0) {
+        alert('Data berat badan peserta kosong! Silakan update data peserta terlebih dahulu.');
+        return;
+    }
+
     let allData = DataStore.getAll();
     let idx = allData.findIndex(p => p.bib === bib && p.jenisTes !== 'lama');
 
     if (idx === -1) {
-        idx = allData.length;
-        allData.push({
-            id: Date.now(),
+        // Try normalize BIB (remove leading zeros for comparison)
+        const bibNum = String(bib).replace(/^0+/, '');
+        idx = allData.findIndex(p => {
+            const pBib = String(p.bib || '').replace(/^0+/, '');
+            return pBib === bibNum && p.jenisTes !== 'lama';
+        });
+    }
+
+    const gender = peserta.genderValue !== undefined ? peserta.genderValue : (peserta.gender === 'Perempuan' ? 0 : 1);
+    const vo2max = Calculations.hitungVO2Max(peserta.bb, peserta.usia, gender, menit, detik, hr);
+    const kategoriKebugaran = Calculations.getKategoriKebugaran(vo2max, peserta.usia, gender);
+    const waktuTempuh = menit + ':' + detik.toString().padStart(2, '0');
+
+    if (idx === -1) {
+        // Create new record
+        const newRecord = {
+            id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
             bib: peserta.bib,
             nama: peserta.nama,
             tglLahir: peserta.tglLahir || '',
             usia: peserta.usia,
-            gender: peserta.genderValue,
+            gender: gender,
             jenisKelamin: peserta.gender,
             tglTes: new Date().toISOString().split('T')[0],
             bb: peserta.bb,
             tb: peserta.tb,
-            waktuMenit: 0,
-            waktuDetik: 0,
-            waktuTempuh: '-',
-            hr: 0,
-            vo2max: 0,
-            kategoriKebugaran: '-',
-            imt: peserta.imt,
-            kategoriIMT: peserta.kategoriIMT,
+            waktuMenit: menit,
+            waktuDetik: detik,
+            waktuTempuh: waktuTempuh,
+            hr: hr,
+            vo2max: parseFloat(vo2max.toFixed(2)),
+            kategoriKebugaran: kategoriKebugaran,
+            imt: peserta.imt || 0,
+            kategoriIMT: peserta.kategoriIMT || '-',
             totalMET: peserta.totalMET || 0,
             kategoriIPAQ: peserta.kategoriIPAQ || '-',
             jenisTes: 'baru'
-        });
+        };
+        allData.push(newRecord);
+    } else {
+        allData[idx].waktuMenit = menit;
+        allData[idx].waktuDetik = detik;
+        allData[idx].waktuTempuh = waktuTempuh;
+        allData[idx].hr = hr;
+        allData[idx].vo2max = parseFloat(vo2max.toFixed(2));
+        allData[idx].kategoriKebugaran = kategoriKebugaran;
+        allData[idx].tglTes = new Date().toISOString().split('T')[0];
+        if (!allData[idx].bb || allData[idx].bb <= 0) allData[idx].bb = peserta.bb;
+        if (!allData[idx].tb || allData[idx].tb <= 0) allData[idx].tb = peserta.tb;
     }
-
-    const waktuTempuh = menit + ':' + detik.toString().padStart(2, '0');
-    const gender = peserta.genderValue !== undefined ? peserta.genderValue : (peserta.gender === 'Perempuan' ? 0 : 1);
-    const vo2max = Calculations.hitungVO2Max(peserta.bb, peserta.usia, gender, menit, detik, hr);
-    const kategoriKebugaran = Calculations.getKategoriKebugaran(vo2max, peserta.usia, gender);
-
-    allData[idx].waktuMenit = menit;
-    allData[idx].waktuDetik = detik;
-    allData[idx].waktuTempuh = waktuTempuh;
-    allData[idx].hr = hr;
-    allData[idx].vo2max = parseFloat(vo2max.toFixed(2));
-    allData[idx].kategoriKebugaran = kategoriKebugaran;
-    allData[idx].tglTes = new Date().toISOString().split('T')[0];
 
     DataStore.saveAll(allData);
 
