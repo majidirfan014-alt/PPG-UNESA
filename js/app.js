@@ -318,6 +318,55 @@ function showSaranFromSearch() {
 
 // ==================== CHARTS ====================
 
+const percentagePlugin = {
+    id: 'percentagePlugin',
+    afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        ctx.save();
+        const dataset = chart.data.datasets[0];
+        const total = dataset.data.reduce((a, b) => a + (b || 0), 0);
+        if (total === 0) { ctx.restore(); return; }
+
+        if (chart.config.type === 'doughnut') {
+            const meta = chart.getDatasetMeta(0);
+            meta.data.forEach((arc, i) => {
+                const val = dataset.data[i] || 0;
+                if (val === 0) return;
+                const pct = ((val / total) * 100).toFixed(1) + '%';
+                const { x, y } = arc.tooltipPosition();
+                const innerRadius = arc.innerRadius;
+                const outerRadius = arc.outerRadius;
+                const midRadius = (innerRadius + outerRadius) / 2;
+                const startAngle = arc.startAngle;
+                const endAngle = arc.endAngle;
+                const midAngle = (startAngle + endAngle) / 2;
+                const offsetX = Math.cos(midAngle) * (midRadius * 0.5);
+                const offsetY = Math.sin(midAngle) * (midRadius * 0.5);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pct, x + offsetX, y + offsetY);
+            });
+        } else if (chart.config.type === 'bar') {
+            const meta = chart.getDatasetMeta(0);
+            meta.data.forEach((bar, i) => {
+                const val = dataset.data[i] || 0;
+                if (val === 0) return;
+                const pct = ((val / total) * 100).toFixed(1) + '%';
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(pct, bar.x, bar.y - 4);
+            });
+        }
+        ctx.restore();
+    }
+};
+
+Chart.register(percentagePlugin);
+
 function initCharts() {
     const ctxBMI = document.getElementById('chartBMI').getContext('2d');
     chartBMI = new Chart(ctxBMI, {
@@ -333,7 +382,7 @@ function initCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } }
+            plugins: { legend: { position: 'bottom' }, percentagePlugin: true }
         }
     });
 
@@ -352,7 +401,7 @@ function initCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: { legend: { display: false }, percentagePlugin: true },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
         }
     });
@@ -371,7 +420,7 @@ function initCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } }
+            plugins: { legend: { position: 'bottom' }, percentagePlugin: true }
         }
     });
 }
