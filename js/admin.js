@@ -645,7 +645,7 @@ function showInfoPeserta(id) {
                 <table class="table table-sm table-borderless mb-0">
                     <tr><td class="text-muted" style="width:40%">Nama</td><td class="fw-semibold">${peserta.nama}</td></tr>
                     <tr><td class="text-muted">Usia</td><td>${peserta.usia || '-'} tahun</td></tr>
-                    <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio(peserta.kategoriKebugaran)}">${peserta.vo2max && peserta.vo2max > 0 ? peserta.vo2max.toFixed(2) + ' ml/kg/min' : '-'}</td></tr>
+                    <tr><td class="text-muted">VO2Max</td><td class="fw-bold ${getWarnaKardio(peserta.kategoriKebugaran)}">${peserta.vo2max != null && peserta.vo2max >= 0 ? peserta.vo2max.toFixed(2) + ' ml/kg/min' : '-'}</td></tr>
                     <tr><td class="text-muted">IMT</td><td>${peserta.imt ? peserta.imt.toFixed(1) : '-'}</td></tr>
                     <tr><td class="text-muted">Total MET</td><td>${peserta.totalMET != null && peserta.totalMET !== '' ? peserta.totalMET : '-'}</td></tr>
                 </table>

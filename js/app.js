@@ -70,9 +70,14 @@ function recalcVO2(p) {
         const g = p.gender !== undefined ? p.gender : (p.jenisKelamin === 'Perempuan' ? 0 : 1);
         vo2 = Calculations.hitungVO2Max(p.bb, p.usia, g, p.waktuMenit, p.waktuDetik || 0, p.hr);
         vo2 = Math.round(vo2 * 100) / 100;
-        if (vo2 > 0) kategori = Calculations.getKategoriKebugaran(vo2, p.usia, g);
+        if (vo2 <= 0) {
+            vo2 = 0;
+            kategori = 'Kurang Sekali';
+        } else {
+            kategori = Calculations.getKategoriKebugaran(vo2, p.usia, g);
+        }
     }
-    return { vo2: (vo2 && vo2 > 0) ? vo2 : null, kategori };
+    return { vo2: (vo2 != null && !isNaN(vo2) && vo2 >= 0) ? vo2 : null, kategori };
 }
 
 function recalcIPAQ(p) {
@@ -436,7 +441,7 @@ function updateTable() {
             p.jenisKelamin === 'Laki-laki' ? 'L' : (p.jenisKelamin === 'Perempuan' ? 'P' : '-'),
             p.waktuTempuh || '-',
             hrDisplay,
-            vo2 ? `<strong>${vo2}</strong>` : '<span class="text-muted">-</span>',
+            vo2 != null ? `<strong>${vo2}</strong>` : '<span class="text-muted">-</span>',
             kategori && kategori !== '-' ?
                 `<span class="badge badge-kategori ${getBadgeClass(kategori)}">${kategori}</span>` : '<span class="text-muted">-</span>',
             p.imt ? p.imt.toFixed(1) : '-',
@@ -606,7 +611,7 @@ function renderRanking() {
                 <td class="text-center">${p.tglTes || '-'}</td>
                 <td class="text-center">${p.usia || '-'}</td>
                 <td class="text-center">${g}</td>
-                <td class="text-center"><strong>${vo2 > 0 ? vo2.toFixed(2) : '-'}</strong></td>
+                <td class="text-center"><strong>${vo2 >= 0 ? vo2.toFixed(2) : '-'}</strong></td>
                 <td class="text-center">${p.kategoriKebugaran && p.kategoriKebugaran !== '-' ? `<span class="badge ${getBadgeClass(p.kategoriKebugaran)}">${p.kategoriKebugaran}</span>` : '<span class="text-muted">-</span>'}</td>
                 <td class="text-start" style="font-size:0.82rem; line-height:1.4;">${catatan}</td>
             </tr>`;
