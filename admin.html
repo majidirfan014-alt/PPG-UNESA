@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Tes Kebugaran PPG</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f9;
+            overflow-x: hidden;
+        }
+
+        #sidebar {
+            min-width: 250px;
+            max-width: 250px;
+            min-height: 100vh;
+            background-color: #1e3a5f;
+            color: #fff;
+            transition: all 0.3s;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        #sidebar.collapsed {
+            margin-left: -250px;
+        }
+
+        #sidebar .sidebar-header {
+            padding: 20px;
+            background: #152d4a;
+            border-bottom: 1px solid #2a4a6b;
+        }
+
+        #sidebar ul.components {
+            padding: 20px 0;
+        }
+
+        #sidebar ul li a {
+            padding: 15px 20px;
+            font-size: 0.95rem;
+            display: block;
+            color: #b8cfe6;
+            text-decoration: none;
+            transition: 0.2s;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+        }
+
+        #sidebar ul li a:hover, #sidebar ul li.active > a {
+            color: #fff;
+            background: #2a5a8b;
+            border-left: 4px solid #4da6ff;
+        }
+
+        #sidebar ul li a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        #content {
+            width: calc(100% - 250px);
+            padding: 20px 30px;
+            min-height: 100vh;
+            margin-left: 250px;
+            transition: all 0.3s;
+        }
+
+        #content.sidebar-collapsed {
+            width: 100%;
+            margin-left: 0;
+        }
+
+        .top-navbar {
+            background: #fff;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid #edf2f9;
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .card-header.bg-primary { background-color: #1e3a5f !important; color: white; border-bottom: none; }
+        .card-header.bg-success { background-color: #198754 !important; color: white; border-bottom: none; }
+        .card-header.bg-info { background-color: #0dcaf0 !important; color: white; border-bottom: none; }
+        .card-header.bg-warning { background-color: #ffc107 !important; color: #1e3a5f; border-bottom: none; }
+        .card-header.bg-dark { background-color: #212529 !important; color: white; border-bottom: none; }
+
+        .timer-display {
+            font-size: 4.5rem;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: #198754;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-panel {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-card h4 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .stat-card p {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin: 0;
+        }
+
+        .badge-kategori {
+            font-size: 0.75rem;
+            padding: 0.5em 0.8em;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #1e3a5f;
+            box-shadow: 0 0 0 0.2rem rgba(30, 58, 95, 0.15);
+        }
+
+        .btn-primary {
+            background-color: #1e3a5f;
+            border-color: #1e3a5f;
+        }
+
+        .btn-primary:hover {
+            background-color: #152d4a;
+            border-color: #152d4a;
+        }
+
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        .modal-content {
+            border: none;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            border-bottom: none;
+        }
+
+        .bib-badge {
+            font-size: 0.9rem;
+            padding: 0.3em 0.6em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                margin-left: -250px;
+            }
+            #sidebar.active {
+                margin-left: 0;
+            }
+            #content {
+                width: 100%;
+                margin-left: 0;
+            }
+            .timer-display {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Searchable Dropdown */
+        .searchable-dropdown {
+            position: relative;
+        }
+        .searchable-dropdown .dropdown-list {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 260px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            z-index: 1050;
+        }
+        .searchable-dropdown .dropdown-list.show {
+            display: block;
+        }
+        .searchable-dropdown .dd-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f3f3;
+            transition: background 0.12s;
+        }
+        .searchable-dropdown .dd-item:last-child { border-bottom: none; }
+        .searchable-dropdown .dd-item:hover,
+        .searchable-dropdown .dd-item.active {
+            background: #e9f1ff;
+        }
+        .searchable-dropdown .dd-item .dd-bib {
+            font-weight: 700;
+            color: #0d6efd;
+            margin-right: 6px;
+        }
+        .searchable-dropdown .dd-no-result {
+            padding: 12px 14px;
+            color: #999;
+            font-style: italic;
+            text-align: center;
+        }
+        .searchable-dropdown .form-control {
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+        <div class="sidebar-header d-flex align-items-center">
+            <i class="fas fa-heart-pulse fs-4 me-2 text-info"></i>
+            <h5 class="mb-0 fw-bold">PPG UNESA</h5>
+        </div>
+
+        <ul class="list-unstyled components">
+            <li class="active">
+                <a onclick="switchTab('import-data', this)"><i class="fas fa-file-import"></i> Import Data</a>
+            </li>
+            <li>
+                <a onclick="switchTab('import-lama', this)"><i class="fas fa-history"></i> Import Data Lama</a>
+            </li>
+            <li>
+                <a onclick="switchTab('timer-rockport', this)"><i class="fas fa-stopwatch"></i> Timer Rockport</a>
+            </li>
+            <li class="mt-5 border-top border-secondary pt-3">
+                <a href="index.html" class="text-warning"><i class="fas fa-home"></i> Kembali ke Dashboard</a>
+            </li>
+            <li>
+                <a href="#" class="text-danger" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div id="content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link text-dark me-3 fs-4 p-0" onclick="toggleSidebar()" id="btnToggleSidebar" style="text-decoration:none;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h5 class="mb-0 text-dark fw-bold" id="page-title">Import Data</h5>
+                    <small class="text-muted">Sistem Tes Kebugaran PPG</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small" id="currentTime"></span>
+                <span class="badge bg-primary p-2"><i class="fas fa-user-shield me-1"></i> Admin</span>
+            </div>
+        </div>
+
+        <!-- ================= SECTION: IMPORT DATA TERINTEGRASI (DEFAULT) ================= -->
+        <div id="import-data" class="content-section active">
+            <div class="row mt-4 justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+                        <div class="card-header bg-primary text-white fw-bold py-3" style="border-radius: 12px 12px 0 0;">
+                            <i class="fas fa-file-excel me-2"></i> Import Data Excel Terintegrasi (Kuesioner Tim PPG)
+                        </div>
+                        <div class="card-body p-4">
+                            <form>
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-secondary">
+                                        <i class="fas fa-calendar-alt me-1"></i> Tanggal Tes <span class="text-danger">*</span>
+                                    </label>
+                                    <input class="form-control form-control-lg" type="date" id="importTanggalTes" required style="max-width: 300px;">
+                                    <div class="form-text mt-1">
+                                        Tanggal ini akan diterapkan ke seluruh data peserta yang diimport.
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-secondary">Upload File Rekapitulasi (.xlsx, .xls, .csv)</label>
+                                    <input class="form-control form-control-lg" type="file" id="fileDataUtama" accept=".xlsx, .xls, .csv">
+                                    <div class="form-text mt-2">
+                                        Sistem akan otomatis mengolah Identitas, Fisik Dasar, dan Menghitung Total MET IPAQ secara bersamaan. Mendukung input dengan simbol <code>&lt;</code> dan <code>&gt;</code>.
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info py-3 px-4 small mb-4 rounded-3 border-0 bg-light">
+                                    <h6 class="fw-bold text-dark mb-3"><i class="fas fa-list-ol text-primary me-2"></i>Urutan Kolom Wajib (A - P):</h6>
+                                    <div class="row">
+                                        <div class="col-md-5">
+                                            <span class="badge bg-secondary mb-2">Identitas & Fisik</span>
+                                            <ul class="ps-3 mb-0 text-dark" style="line-height: 1.7;">
+                                                <li><strong>A.</strong> Bib</li>
+                                                <li><strong>B.</strong> Nama</li>
+                                                <li><strong>C.</strong> Jenis Kelamin (L/P)</li>
+                                                <li><strong>D.</strong> Usia (Tahun)</li>
+                                                <li><strong>E.</strong> Tinggi Badan (Cm)</li>
+                                                <li><strong>F.</strong> Berat Badan (Kg)</li>
+                                                <li><strong>G.</strong> Jabatan</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-7 border-start">
+                                            <span class="badge bg-warning text-dark mb-2">9 Pertanyaan Aktivitas Fisik</span>
+                                            <ul class="ps-3 mb-0 text-dark" style="line-height: 1.7;">
+                                                <li><strong>H.</strong> Frekuensi Olahraga (hari/minggu)</li>
+                                                <li><strong>I.</strong> Durasi Olahraga (menit/minggu)</li>
+                                                <li><strong>J.</strong> Frekuensi Aktivitas Berat (hari/minggu)</li>
+                                                <li><strong>K.</strong> Durasi Aktivitas Berat (menit/hari)</li>
+                                                <li><strong>L.</strong> Frekuensi Aktivitas Sedang (hari/minggu)</li>
+                                                <li><strong>M.</strong> Durasi Aktivitas Sedang (menit/hari)</li>
+                                                <li><strong>N.</strong> Frekuensi Berjalan (hari/minggu)</li>
+                                                <li><strong>O.</strong> Durasi Berjalan (menit/hari)</li>
+                                                <li><strong>P.</strong> Waktu Duduk / Sedentari (menit/hari)</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <button type="button" class="btn btn-primary fw-bold px-5 py-2 rounded-pill shadow-sm" onclick="prosesImportExcel()">
+                                        <i class="fas fa-cloud-upload-alt me-2"></i> Proses Import Data
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4 justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+                        <div class="card-header bg-success text-white fw-bold py-3 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                            <span><i class="fas fa-table me-2"></i> Hasil Import Data</span>
+                            <span class="badge bg-light text-success" id="totalImported">0 Peserta</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped text-center mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>BIB</th>
+                                            <th class="text-start">Nama</th>
+                                            <th>L/P</th>
+                                            <th>Usia</th>
+                                            <th>TB</th>
+                                            <th>BB</th>
+                                            <th>IMT</th>
+                                            <th>Total MET</th>
+                                            <th>Kategori IPAQ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelImport">
+                                        <tr><td colspan="9" class="text-muted py-3">Belum ada data yang di-import.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4 justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+                        <div class="card-header bg-dark text-white fw-bold py-3" style="border-radius: 12px 12px 0 0;">
+                            <i class="fas fa-calculator me-2"></i> Kalkulator Kuesioner IPAQ (Manual)
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="alert alert-info py-2 px-3 small mb-3">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Gunakan <code>&lt;</code> kurang dari (contoh: <code>&lt;30</code>) atau <code>&gt;</code> lebih dari (contoh: <code>&gt;3</code>) untuk nilai perkiraan.
+                            </div>
+                            <form id="formIPAQ">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="text-dark mb-2"><i class="fas fa-fire text-danger me-1"></i> <strong>Aktivitas Fisik Berat (MET: 8.0)</strong></p>
+                                        <div class="mb-2">
+                                            <label class="small fw-bold">Frekuensi (hari/minggu):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q3" value="0" placeholder="Contoh: 3 atau &gt;3">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="small fw-bold">Durasi (menit/hari):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q4" value="0" placeholder="Contoh: 30 atau &lt;30">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="text-dark mb-2"><i class="fas fa-walking text-warning me-1"></i> <strong>Aktivitas Fisik Sedang (MET: 4.0)</strong></p>
+                                        <div class="mb-2">
+                                            <label class="small fw-bold">Frekuensi (hari/minggu):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q5" value="0" placeholder="Contoh: 5 atau &gt;5">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="small fw-bold">Durasi (menit/hari):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q6" value="0" placeholder="Contoh: 30 atau &lt;30">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="text-dark mb-2"><i class="fas fa-shoe-prints text-success me-1"></i> <strong>Aktivitas Berjalan (MET: 3.3)</strong></p>
+                                        <div class="mb-2">
+                                            <label class="small fw-bold">Frekuensi (hari/minggu):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q7" value="0" placeholder="Contoh: 5 atau &gt;5">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="small fw-bold">Durasi (menit/hari):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q8" value="0" placeholder="Contoh: 30 atau &lt;30">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="text-dark mb-2"><i class="fas fa-chair text-secondary me-1"></i> <strong>Waktu Duduk / Sedentari</strong></p>
+                                        <div class="mb-3">
+                                            <label class="small fw-bold">Durasi (menit/hari):</label>
+                                            <input type="text" class="form-control form-control-sm" id="q9" value="0" placeholder="Contoh: 480 atau &lt;600">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center bg-light p-3 rounded">
+                                    <button type="button" class="btn btn-dark fw-bold me-4" onclick="hitungIPAQManual()">
+                                        <i class="fas fa-calculator me-2"></i> Hitung IPAQ
+                                    </button>
+                                    <div class="flex-grow-1">
+                                        <span class="d-block text-muted small mb-1">Hasil Perhitungan:</span>
+                                        <div id="hasilIPAQManual">-</div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-end mt-3">
+                <button class="btn btn-danger fw-bold" onclick="clearAllData()">
+                    <i class="fas fa-trash-alt me-2"></i> Hapus Semua Data
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= SECTION: INPUT WAKTU & HR ================= -->
+        <div id="timer-rockport" class="content-section">
+            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+                <div class="card-header bg-success text-white fw-bold py-3" style="border-radius: 12px 12px 0 0;">
+                    <i class="fas fa-stopwatch me-2"></i> Input Waktu & Denyut Nadi (HR)
+                </div>
+                <div class="card-body p-4">
+                    
+                    <div class="row g-3">
+                        <!-- Pilih Peserta -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Pilih Nama Peserta</label>
+                            <div class="searchable-dropdown" id="searchablePeserta">
+                                <input type="text" class="form-control form-control-lg" id="inputSearchPeserta" 
+                                       placeholder="Ketik nama atau BIB untuk mencari..." autocomplete="off"
+                                       oninput="filterDropdownPeserta()" onkeydown="handleDropdownKeydown(event)" onfocus="showDropdownPeserta()" onblur="hideDropdownPeserta()">
+                                <div class="dropdown-list" id="dropdownListPeserta"></div>
+                            </div>
+                            <input type="hidden" id="selectedBIBPeserta" value="">
+                            <div class="form-text mt-1" id="selectedNamaInfo"></div>
+                        </div>
+
+                        <!-- Input Waktu -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Waktu Tempuh (MM:SS)</label>
+                            <input type="text" class="form-control form-control-lg text-center fw-bold" 
+                                   id="inputWaktu" placeholder="02:18" maxlength="5"
+                                   onkeypress="if(event.key==='Enter'){document.getElementById('inputHR').focus();}">
+                            <div class="form-text">Format: Menit:Detik (contoh: 02:18)</div>
+                        </div>
+
+                        <!-- Input HR -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Denyut Nadi / HR (BPM)</label>
+                            <input type="number" class="form-control form-control-lg text-center fw-bold" 
+                                   id="inputHR" placeholder="130" min="0"
+                                   onkeypress="if(event.key==='Enter'){simpanWaktuDanHR();}">
+                            <div class="form-text">Masukkan denyut nadi hasil pengukuran langsung</div>
+                        </div>
+                    </div>
+
+                    <!-- Info Hasil -->
+                    <div class="alert alert-info mt-3 mb-0" id="infoInputArea" style="display:none;">
+                        <i class="fas fa-calculator me-2"></i>
+                        <span id="infoInputText"></span>
+                    </div>
+
+                    <!-- Tombol Simpan -->
+                    <div class="text-center mt-4">
+                        <button class="btn btn-success btn-lg fw-bold px-5 py-3 rounded-pill shadow" onclick="simpanWaktuDanHR()">
+                            <i class="fas fa-save me-2"></i> Simpan ke Landing Page
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SECTION: IMPORT DATA LAMA ================= -->
+        <div id="import-lama" class="content-section">
+            <div class="row mt-4 justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+                        <div class="card-header bg-secondary text-white fw-bold py-3" style="border-radius: 12px 12px 0 0;">
+                            <i class="fas fa-file-excel me-2"></i> Import Data Lama (Tes Sebelumnya)
+                        </div>
+                        <div class="card-body p-4">
+                            <form>
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-secondary">Upload File Data Lama (.xlsx, .xls, .csv)</label>
+                                    <input class="form-control form-control-lg" type="file" id="fileDataLama" accept=".xlsx, .xls, .csv">
+                                    <div class="form-text mt-2">
+                                        Sistem akan memetakan data ini berdasarkan <strong>Nama Peserta</strong> untuk disandingkan dengan data tes terbaru di menu Data Perbandingan di Landing Page.
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-secondary py-3 px-4 small mb-4 rounded-3 border-0">
+                                    <h6 class="fw-bold text-dark mb-3">
+                                        <i class="fas fa-info-circle text-secondary me-2"></i>Format Kolom yang Didukung (A - O):
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <span class="badge bg-secondary mb-2">Identitas & Fisik</span>
+                                            <ul class="ps-3 mb-0 text-dark" style="line-height: 1.7;">
+                                                <li><strong>A.</strong> Timestamp</li>
+                                                <li><strong>B.</strong> Nama <em>(Kunci Sinkronisasi)</em></li>
+                                                <li><strong>C.</strong> Jenis Kelamin (L/P)</li>
+                                                <li><strong>D.</strong> Usia (Tahun)</li>
+                                                <li><strong>E.</strong> Tinggi Badan (Cm)</li>
+                                                <li><strong>F.</strong> Berat Badan (Kg)</li>
+                                                <li><strong>G.</strong> Hasil Waktu</li>
+                                                <li><strong>H.</strong> Heart Rate</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6 border-start">
+                                            <span class="badge bg-warning text-dark mb-2">Hasil Tes Sebelumnya</span>
+                                            <ul class="ps-3 mb-0 text-dark" style="line-height: 1.7;">
+                                                <li><strong>I.</strong> Hasil VO2Max Nov</li>
+                                                <li><strong>J.</strong> Category Global</li>
+                                                <li><strong>K.</strong> Kategori Kebugaran</li>
+                                                <li><strong>L.</strong> IMT</li>
+                                                <li><strong>M.</strong> Kategori IMT</li>
+                                                <li><strong>N.</strong> Nilai Aktivitas Fisik (MET)</li>
+                                                <li><strong>O.</strong> Kategori Aktivitas Fisik</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <button type="button" class="btn btn-primary fw-bold px-5 py-2 rounded-pill shadow-sm" onclick="prosesImportDataLama()">
+                                        <i class="fas fa-save me-2"></i> Simpan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL SARAN PROFESIONAL -->
+<div class="modal fade" id="modalSaran" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-user-md me-2"></i>Analisis & Saran Kebugaran</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row mb-3 text-center border-bottom pb-3">
+                    <div class="col-6">
+                        <span class="d-block text-muted small">Status Komposisi Tubuh (IMT)</span>
+                        <h5 class="fw-bold text-primary" id="modalIMT">-</h5>
+                    </div>
+                    <div class="col-6">
+                        <span class="d-block text-muted small">Kapasitas Kardiorespirasi (VO2Max)</span>
+                        <h5 class="fw-bold text-success" id="modalVO2">-</h5>
+                    </div>
+                </div>
+                
+                <h6 class="fw-bold text-secondary mt-3"><i class="fas fa-dumbbell me-2"></i>Rekomendasi Program Latihan</h6>
+                <div class="p-3 bg-light rounded text-dark" id="saranLatihan" style="font-size: 0.95rem; line-height: 1.6;"></div>
+
+                <h6 class="fw-bold text-secondary mt-4"><i class="fas fa-apple-whole me-2"></i>Rekomendasi Nutrisi & Gaya Hidup</h6>
+                <div class="p-3 bg-light rounded text-dark" id="saranNutrisi" style="font-size: 0.95rem; line-height: 1.6;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL INFO PESERTA -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Hasil Analisis & Rekomendasi Latihan</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="infoModalBody"></div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+                <i class="fas fa-check-circle me-2"></i><span id="toastMessage"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/calculations.js"></script>
+<script src="js/data.js"></script>
+<script src="js/recommendations.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

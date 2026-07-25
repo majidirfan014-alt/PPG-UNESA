@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Tes Kebugaran PPG</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f9;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2a5a8b 100%) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            padding: 0.5rem 0;
+        }
+
+        .navbar-brand {
+            font-size: 1rem;
+        }
+
+        .nav-menu-btn {
+            color: rgba(255,255,255,0.7) !important;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 8px 16px !important;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            margin: 0 2px;
+            white-space: nowrap;
+        }
+
+        .nav-menu-btn:hover {
+            color: #fff !important;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .nav-menu-btn.active {
+            color: #fff !important;
+            background: #0d6efd !important;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2a5a8b 50%, #198754 100%);
+            color: white;
+            padding: 50px 0;
+            margin-top: 56px;
+            text-align: center;
+        }
+
+        .hero-section h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card-header {
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .stat-card p {
+            color: #6c757d;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .badge-kategori {
+            font-size: 0.75rem;
+            padding: 0.5em 0.8em;
+        }
+
+        .footer {
+            background: #1e3a5f;
+            color: white;
+            padding: 30px 0;
+            margin-top: 50px;
+        }
+
+        .rank-badge {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .rank-1 { background: linear-gradient(145deg, #ffd700, #ffb347); color: #333; }
+        .rank-2 { background: linear-gradient(145deg, #c0c0c0, #e8e8e8); color: #333; }
+        .rank-3 { background: linear-gradient(145deg, #cd7f32, #daa520); color: #fff; }
+
+        .section-page { display: none; }
+        .section-page.active { display: block; }
+
+        /* ===== PERBANDINGAN SECTION ===== */
+        .summary-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .summary-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .chart-scroll-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .chart-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .chart-scroll-container::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 4px;
+        }
+        .chart-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+        #section-perbandingan .table td,
+        #section-perbandingan .table th {
+            vertical-align: middle;
+            padding: 14px 12px;
+        }
+        #section-perbandingan .table tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+        }
+        #section-perbandingan .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        /* Filter Buttons */
+        .filter-btn {
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            transition: all 0.2s ease;
+            border: 1.5px solid #dee2e6;
+        }
+        .filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .filter-btn.active {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(13,110,253,0.3);
+        }
+        /* Ranking Tab */
+        .ranking-tab-btn {
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 8px 20px;
+            margin-right: 8px;
+            transition: all 0.2s ease;
+            color: #6c757d;
+            background: #f1f3f5;
+            border: none;
+        }
+        .ranking-tab-btn:hover {
+            background: #e2e6ea;
+        }
+        .ranking-tab-btn.active {
+            background: #0d6efd !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(13,110,253,0.25);
+        }
+
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 1.8rem;
+            }
+            .nav-menu-btn {
+                font-size: 0.75rem;
+                padding: 6px 10px !important;
+            }
+        }
+
+        /* Autocomplete Cek Hasil */
+        .autocomplete-search {
+            position: relative;
+        }
+        .dd-list-cekhasil {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 280px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            z-index: 1050;
+        }
+        .dd-list-cekhasil.show {
+            display: block;
+        }
+        .dd-item-cek {
+            padding: 11px 18px;
+            cursor: pointer;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background 0.12s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dd-item-cek:last-child { border-bottom: none; }
+        .dd-item-cek:hover,
+        .dd-item-cek.active {
+            background: #e9f1ff;
+        }
+        .dd-item-cek .dd-name-cek {
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+        .dd-item-cek .dd-bib-cek {
+            font-size: 0.78rem;
+            color: #888;
+            margin-left: auto;
+        }
+        .dd-no-result-cek {
+            padding: 14px 18px;
+            color: #999;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid px-3">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#" onclick="showSection('dashboard')">
+                <img src="channels4_profile.jpg" alt="PPG Logo" class="me-2 rounded-circle" style="height: 32px; width: 32px; object-fit: cover;">
+                PPG UNESA
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto ms-3">
+                    <li class="nav-item">
+                        <a class="nav-link nav-menu-btn active" href="#" onclick="showSection('cek-hasil')" id="nav-cek-hasil">
+                            <i class="fas fa-search me-1"></i> Cek Hasil Tes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-menu-btn" href="#" onclick="showSection('ranking')" id="nav-ranking">
+                            <i class="fas fa-trophy me-1"></i> Ranking
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-menu-btn" href="#" onclick="showSection('perbandingan')" id="nav-perbandingan">
+                            <i class="fas fa-scale-balanced me-1"></i> Perbandingan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-menu-btn" href="#" onclick="showSection('dashboard')" id="nav-dashboard">
+                            <i class="fas fa-chart-line me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-menu-btn" href="#data-peserta-section" onclick="showSection('data-peserta')" id="nav-data-peserta">
+                            <i class="fas fa-table me-1"></i> Data Peserta
+                        </a>
+                    </li>
+                </ul>
+                <button class="btn btn-outline-light btn-sm" onclick="showLoginModal()">
+                    <i class="fas fa-shield-halved me-1"></i> Admin
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section text-white py-5 mb-4 position-relative" style="background: linear-gradient(135deg, #1b4f72 0%, #117864 100%); border-radius: 0 0 24px 24px;">
+        <div class="container text-center py-4 my-3">
+            <div class="mb-3">
+                <img src="channels4_profile.jpg" alt="PPG Logo" class="rounded-circle shadow-lg" style="width: 100px; height: 100px; object-fit: cover; border: 4px solid rgba(255,255,255,0.3);">
+            </div>
+            <h1 class="display-5 fw-bold mb-2 text-white">Sistem Tes Kebugaran PPG</h1>
+            <p class="lead text-light opacity-85 mb-0">Rockport 1-Mile Walk Test - Estimasi VO2Max & Kategori Kebugaran</p>
+        </div>
+    </section>
+
+    <main class="container mt-4 pt-2">
+
+        <!-- =================== SECTION: CEK HASIL TES =================== -->
+        <div id="section-cek-hasil" class="section-page active">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm p-4" style="border-radius: 16px; background-color: #f8f9fa;">
+                        <div class="autocomplete-search mb-4 shadow-sm rounded-pill overflow-hidden bg-white" id="autocompleteCekHasil">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-0 ps-4"><i class="fas fa-user text-primary"></i></span>
+                                <input type="text" id="cariBIB" class="form-control border-0 py-3" 
+                                       placeholder="Ketik Nama Anda untuk mengecek hasil..." autocomplete="off"
+                                       oninput="filterCekHasil()" onkeydown="handleCekHasilKeydown(event)" onfocus="showCekHasilDropdown()" onblur="hideCekHasilDropdown()">
+                                <button class="btn btn-primary px-4 fw-bold" onclick="cariDataIndividu()">
+                                    <i class="fas fa-search me-1"></i> Cek Hasil
+                                </button>
+                            </div>
+                            <div class="dd-list-cekhasil" id="ddListCekHasil"></div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm p-4 text-center bg-white" style="border-radius: 12px; display:none;" id="hasilPencarian">
+                            <div class="mb-2">
+                                <span class="badge bg-primary px-3 py-1 mb-2" id="hasilBIB">BIB: 001</span>
+                                <h3 class="fw-bold text-dark mb-3" id="hasilNama">-</h3>
+                            </div>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-3 h-100 bg-light">
+                                        <span class="d-block text-muted small mb-1">IMT (Indeks Massa Tubuh)</span>
+                                        <h2 class="fw-bold text-primary mb-2" id="hasilIMT">-</h2>
+                                        <span class="badge bg-secondary px-3 py-1" id="hasilKetIMT">-</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-3 h-100 bg-light">
+                                        <span class="d-block text-muted small mb-1">Estimasi VO2Max</span>
+                                        <h2 class="fw-bold text-success mb-2" id="hasilVO2">-</h2>
+                                        <span class="badge bg-secondary px-2 py-1" id="hasilKetVO2">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-primary fw-bold px-4 rounded-pill" onclick="showSaranFromSearch()">
+                                    <i class="fas fa-lightbulb me-1"></i> Lihat Saran
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== SECTION: RANKING =================== -->
+        <div id="section-ranking" class="section-page">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card border-0 shadow-sm p-4 bg-white" style="border-radius: 16px;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="fw-bold text-dark mb-0"><i class="fas fa-trophy text-warning me-2"></i> Papan Ranking Kebugaran</h4>
+                            <select class="form-select form-select-sm w-auto" id="filterTanggalRanking" onchange="renderRanking()">
+                                <option value="semua">Semua Tanggal</option>
+                            </select>
+                        </div>
+
+                        <!-- Gender Tabs -->
+                        <ul class="nav nav-pills mb-3" id="rankingGenderTab">
+                            <li class="nav-item">
+                                <button class="nav-link active ranking-tab-btn" onclick="switchRankingTab('L')">
+                                    <i class="fas fa-mars me-1"></i> Laki-Laki
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link ranking-tab-btn" onclick="switchRankingTab('P')">
+                                    <i class="fas fa-venus me-1"></i> Perempuan
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="text-center" style="width:6%">Rank</th>
+                                        <th class="text-center" style="width:7%">No. BIB</th>
+                                        <th class="text-start" style="width:20%">Nama Peserta</th>
+                                        <th class="text-center" style="width:12%">Tanggal Tes</th>
+                                        <th class="text-center" style="width:6%">Usia</th>
+                                        <th class="text-center" style="width:6%">L/P</th>
+                                        <th class="text-center" style="width:10%">VO2Max</th>
+                                        <th class="text-center" style="width:12%">Kategori</th>
+                                        <th class="text-start" style="width:21%">Catatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingBodyL" style="display:;"></tbody>
+                                <tbody id="rankingBodyP" style="display:none;"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== SECTION: PERBANDINGAN =================== -->
+        <div id="section-perbandingan" class="section-page">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card border-0 shadow-sm p-4 bg-white" style="border-radius: 16px;">
+                        <h4 class="fw-bold text-dark mb-2"><i class="fas fa-scale-balanced text-info me-2"></i> Perbandingan VO2Max: Tes Lama vs Tes Terbaru</h4>
+                        <p class="text-muted small mb-4">Grafik perbandingan nilai VO2Max antara data tes sebelumnya dengan tes terbaru.</p>
+
+                        <div class="row mb-4 g-4">
+                            <!-- Chart -->
+                            <div class="col-lg-8">
+                                <div class="chart-scroll-container" style="overflow-x: auto; border-radius: 12px; background: #fafbfc; border: 1px solid #e9ecef;">
+                                    <div id="chartWrapper" style="min-width: 400px; height: 380px; padding: 15px 10px 10px 10px;">
+                                        <canvas id="chartPerbandinganVO2"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Summary Cards -->
+                            <div class="col-lg-4">
+                                <div class="d-flex flex-column gap-3 h-100">
+                                    <div class="summary-card p-3 rounded-3 text-center flex-fill">
+                                        <div class="small text-muted mb-1 fw-medium">Jumlah Peserta</div>
+                                        <div class="summary-value text-primary" id="statTotalBanding">0</div>
+                                    </div>
+                                    <div class="summary-card p-3 rounded-3 text-center flex-fill">
+                                        <div class="small text-muted mb-1 fw-medium">Rata-rata Selisih VO2Max</div>
+                                        <div class="summary-value text-success" id="statAvgSelisih">0</div>
+                                    </div>
+                                    <div class="summary-card p-3 rounded-3 text-center flex-fill">
+                                        <div class="small text-muted mb-1 fw-medium">Persentase Peningkatan</div>
+                                        <div class="summary-value text-info" id="statPersenNaik">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filter Buttons -->
+                        <div class="d-flex flex-wrap gap-2 mb-3" id="filterPerbandingan">
+                            <button class="btn btn-sm btn-primary filter-btn active" onclick="filterPerbandingan('semua')">
+                                <i class="fas fa-list me-1"></i> Semua Data
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary filter-btn" onclick="filterPerbandingan('lama')">
+                                <i class="fas fa-clock me-1"></i> Data Lama Saja
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary filter-btn" onclick="filterPerbandingan('baru')">
+                                <i class="fas fa-star me-1"></i> Data Baru Saja
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary filter-btn" onclick="filterPerbandingan('keduanya')">
+                                <i class="fas fa-scale-balanced me-1"></i> Ada Keduanya
+                            </button>
+                        </div>
+
+                        <!-- Tabel Perbandingan -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="text-start ps-3" style="width:28%">Nama Peserta</th>
+                                        <th class="text-center" style="width:25%">VO2Max Lama &amp; Kategori</th>
+                                        <th class="text-center" style="width:25%">VO2Max Baru &amp; Kategori</th>
+                                        <th class="text-center" style="width:22%">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelPerbandinganBody">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">
+                                            <i class="fas fa-scale-balanced fa-2x mb-2 d-block"></i>
+                                            Belum ada data perbandingan.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== SECTION: DASHBOARD =================== -->
+        <div id="section-dashboard" class="section-page">
+            <h4 class="fw-bold text-dark mb-3"><i class="fas fa-chart-line me-2"></i> Dashboard Statistik</h4>
+            <div class="row g-4 mb-4">
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="icon bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3 class="text-primary" id="statTotal">0</h3>
+                        <p>Total Peserta</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="icon bg-success bg-opacity-10 text-success">
+                            <i class="fas fa-heartbeat"></i>
+                        </div>
+                        <h3 class="text-success" id="statAvgVO2">0</h3>
+                        <p>Rata-rata VO2Max</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="icon bg-warning bg-opacity-10 text-warning">
+                            <i class="fas fa-weight"></i>
+                        </div>
+                        <h3 class="text-warning" id="statAvgIMT">0</h3>
+                        <p>Rata-rata IMT</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="icon bg-info bg-opacity-10 text-info">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <h3 class="text-info" id="statAvgHR">0</h3>
+                        <p>Rata-rata HR</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <i class="fas fa-chart-pie me-2"></i> Distribusi Kategori IMT
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartBMI" style="max-height: 280px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="fas fa-chart-bar me-2"></i> Distribusi Kategori VO2Max
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartVO2" style="max-height: 280px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="fas fa-chart-bar me-2"></i> Distribusi Kategori IPAQ
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartIPAQ" style="max-height: 280px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== SECTION: DATA PESERTA =================== -->
+        <div id="section-data-peserta" class="section-page">
+            <div class="card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-table me-2"></i> Data Peserta</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="text-white small mb-0 me-1"><i class="fas fa-calendar me-1"></i> Filter Tanggal:</label>
+                        <input type="date" class="form-control form-control-sm w-auto" id="filterTanggalData" onchange="filterDataByTanggal()">
+                        <button class="btn btn-sm btn-outline-light" onclick="resetFilterTanggal()" title="Reset Filter">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tablePeserta" class="table table-striped table-hover" style="width:100%">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>BIB</th>
+                                    <th>Nama</th>
+                                    <th>Usia</th>
+                                    <th>L/P</th>
+                                    <th>Waktu</th>
+                                    <th>HR (BPM)</th>
+                                    <th>VO2Max</th>
+                                    <th>Ket. Kebugaran</th>
+                                    <th>IMT</th>
+                                    <th>Ket. IMT</th>
+                                    <th>Total MET</th>
+                                    <th>Ket. IPAQ</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-shield-halved me-2"></i>Login Admin</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formLogin">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="loginUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword" required>
+                        </div>
+                        <div class="alert alert-danger d-none" id="loginError">
+                            Username atau password salah!
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-sign-in-alt me-1"></i> Login
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div class="modal fade" id="infoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Hasil Analisis & Rekomendasi Latihan</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="infoModalBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+        <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body" id="toastBody">
+                    <i class="fas fa-check-circle me-2"></i><span id="toastMessage"></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2026 Sistem Tes Kebugaran PPG - Rockport 1-Mile Walk Test</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="js/calculations.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/recommendations.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
