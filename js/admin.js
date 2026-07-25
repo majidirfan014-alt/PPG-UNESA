@@ -1052,6 +1052,78 @@ function exportToExcel() {
     XLSX.writeFile(wb, "data_peserta_ppg.xlsx");
 }
 
+function updateIPAQExisting() {
+    const fileInput = document.getElementById('fileUpdateIPAQ');
+    const file = fileInput.files[0];
+    const statusEl = document.getElementById('statusUpdateIPAQ');
+
+    if (!file) { alert('Pilih file terlebih dahulu!'); return; }
+
+    statusEl.textContent = 'Memproses...';
+    statusEl.className = 'text-warning small fw-bold';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+            if (jsonData.length < 2) { alert('File kosong!'); statusEl.textContent = ''; return; }
+
+            const headers = jsonData[0];
+            const columns = mapColumns(headers);
+
+            let updated = 0;
+            let skipped = 0;
+            const allData = DataStore.getAll();
+
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0) continue;
+
+                const nama = getValue(row, columns.nama);
+                if (!nama) { skipped++; continue; }
+
+                const peserta = allData.find(p => p.nama && p.nama.toLowerCase() === String(nama).toLowerCase());
+                if (!peserta) { skipped++; continue; }
+
+                const v_days = parseInt(parseIPAQValue(getValue(row, columns.q3))) || 0;
+                const v_min = parseInt(parseIPAQValue(getValue(row, columns.q4))) || 0;
+                const m_days = parseInt(parseIPAQValue(getValue(row, columns.q5))) || 0;
+                const m_min = parseInt(parseIPAQValue(getValue(row, columns.q6))) || 0;
+                const w_days = parseInt(parseIPAQValue(getValue(row, columns.q7))) || 0;
+                const w_min = parseInt(parseIPAQValue(getValue(row, columns.q8))) || 0;
+
+                const result = Calculations.hitungIPAQ(v_days, v_min, m_days, m_min, w_days, w_min);
+
+                DataStore.update(peserta.id, {
+                    totalMET: result.total_met,
+                    kategoriIPAQ: result.kategori,
+                    ipaq_v_days: v_days,
+                    ipaq_v_min: v_min,
+                    ipaq_m_days: m_days,
+                    ipaq_m_min: m_min,
+                    ipaq_w_days: w_days,
+                    ipaq_w_min: w_min
+                });
+                updated++;
+            }
+
+            refreshAll();
+            statusEl.textContent = `Berhasil update ${updated} data, ${skipped} dilewati`;
+            statusEl.className = 'text-success small fw-bold';
+            fileInput.value = '';
+        } catch (error) {
+            console.error('Error update IPAQ:', error);
+            statusEl.textContent = 'Error: ' + error.message;
+            statusEl.className = 'text-danger small fw-bold';
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 function clearAllData() {
     clearAllDummyData();
 }
