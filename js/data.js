@@ -1,183 +1,220 @@
 /**
  * Data Management Module - Sistem Tes Kebugaran PPG
- * Mengelola data menggunakan localStorage
+ * Firestore backend with in-memory cache for sync reads.
+ * All writes update cache immediately + persist to Firestore async.
  */
 
 const DataStore = {
-    STORAGE_KEY: 'ppg_fitness_data',
-    
+    COLLECTION: 'peserta',
+    _cache: [],
+    _ready: false,
+    _initPromise: null,
+    _db: null,
+
     /**
-     * Mendapatkan semua data peserta
-     * @returns {Array} Array objek peserta
+     * Initialize Firestore connection and load data into cache.
+     * Must be called once before any data access.
      */
+    init() {
+        if (this._initPromise) return this._initPromise;
+        this._initPromise = (async () => {
+            try {
+                this._db = firebase.firestore();
+                const snapshot = await this._db.collection(this.COLLECTION).get();
+                this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                this._ready = true;
+                console.log(`[DataStore] Loaded ${this._cache.length} records from Firestore`);
+            } catch (err) {
+                console.error('[DataStore] Firestore init failed, falling back to localStorage:', err);
+                const fallback = localStorage.getItem('ppg_fitness_data');
+                this._cache = fallback ? JSON.parse(fallback) : [];
+                this._ready = true;
+            }
+        })();
+        return this._initPromise;
+    },
+
+    /**
+     * Returns a promise that resolves when DataStore is ready.
+     */
+    waitForInit() {
+        if (this._ready) return Promise.resolve();
+        return this.init();
+    },
+
+    _persist() {
+        try {
+            localStorage.setItem('ppg_fitness_data', JSON.stringify(this._cache));
+        } catch (e) { /* ignore */ }
+    },
+
+    _asyncSet(docId, data) {
+        if (!this._db) return;
+        const clean = { ...data };
+        delete clean.id;
+        this._db.collection(this.COLLECTION).doc(docId).set(clean).catch(err => {
+            console.error('[DataStore] Firestore write error:', err);
+        });
+    },
+
+    _asyncDelete(docId) {
+        if (!this._db) return;
+        this._db.collection(this.COLLECTION).doc(docId).delete().catch(err => {
+            console.error('[DataStore] Firestore delete error:', err);
+        });
+    },
+
+    _asyncAdd(data) {
+        if (!this._db) return null;
+        const clean = { ...data };
+        delete clean.id;
+        const ref = this._db.collection(this.COLLECTION).doc();
+        ref.set(clean).catch(err => {
+            console.error('[DataStore] Firestore add error:', err);
+        });
+        return ref.id;
+    },
+
     getAll() {
-        const data = localStorage.getItem(this.STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
+        return [...this._cache];
     },
 
-    /**
-     * Menyimpan semua data
-     * @param {Array} data 
-     */
-    saveAll(data) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+    getById(id) {
+        return this._cache.find(p => p.id === id) || null;
     },
 
-    /**
-     * Menambah data peserta baru
-     * @param {Object} peserta 
-     * @returns {Object} Data peserta yang sudah ditambahkan
-     */
     add(peserta) {
-        const data = this.getAll();
-        peserta.id = Date.now(); // ID unik
+        const docId = String(Date.now()) + '_' + Math.random().toString(36).substr(2, 5);
+        peserta.id = docId;
         peserta.createdAt = new Date().toISOString();
-        data.push(peserta);
-        this.saveAll(data);
+        this._cache.push(peserta);
+        this._persist();
+        this._asyncAdd(peserta);
         return peserta;
     },
 
-    /**
-     * Update data peserta
-     * @param {number} id 
-     * @param {Object} updatedData 
-     * @returns {Object|null}
-     */
     update(id, updatedData) {
-        const data = this.getAll();
-        const index = data.findIndex(p => p.id === id);
+        const index = this._cache.findIndex(p => p.id === id);
         if (index !== -1) {
-            data[index] = { ...data[index], ...updatedData, updatedAt: new Date().toISOString() };
-            this.saveAll(data);
-            return data[index];
+            this._cache[index] = { ...this._cache[index], ...updatedData, updatedAt: new Date().toISOString() };
+            this._persist();
+            this._asyncSet(id, this._cache[index]);
+            return this._cache[index];
         }
         return null;
     },
 
-    /**
-     * Hapus data peserta
-     * @param {number} id 
-     * @returns {boolean}
-     */
     delete(id) {
-        const data = this.getAll();
-        const filtered = data.filter(p => p.id !== id);
-        if (filtered.length !== data.length) {
-            this.saveAll(filtered);
+        const before = this._cache.length;
+        this._cache = this._cache.filter(p => p.id !== id);
+        if (this._cache.length < before) {
+            this._persist();
+            this._asyncDelete(id);
             return true;
         }
         return false;
     },
 
-    /**
-     * Mendapatkan data peserta berdasarkan ID
-     * @param {number} id 
-     * @returns {Object|null}
-     */
-    getById(id) {
-        const data = this.getAll();
-        return data.find(p => p.id === id) || null;
+    saveAll(data) {
+        this._cache = [...data];
+        this._persist();
+        // Re-sync all to Firestore
+        if (this._db) {
+            const batch = this._db.batch();
+            this._db.collection(this.COLLECTION).get().then(snapshot => {
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                data.forEach(item => {
+                    const clean = { ...item };
+                    const docId = String(clean.id);
+                    delete clean.id;
+                    batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
+                });
+                return batch.commit();
+            }).catch(err => console.error('[DataStore] Bulk save error:', err));
+        }
     },
 
-    /**
-     * Menghapus semua data
-     */
     clearAll() {
-        localStorage.removeItem(this.STORAGE_KEY);
+        this._cache = [];
+        this._persist();
+        if (this._db) {
+            this._db.collection(this.COLLECTION).get().then(snapshot => {
+                const batch = this._db.batch();
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                return batch.commit();
+            }).catch(err => console.error('[DataStore] Clear error:', err));
+        }
     },
 
-    /**
-     * Mendapatkan jumlah total peserta
-     * @returns {number}
-     */
     getCount() {
-        return this.getAll().length;
+        return this._cache.length;
     },
 
-    /**
-     * Menghitung rata-rata VO2Max
-     * @returns {number}
-     */
     getAvgVO2Max() {
-        const data = this.getAll();
-        if (data.length === 0) return 0;
-        const total = data.reduce((sum, p) => sum + (p.vo2max || 0), 0);
-        return Math.round((total / data.length) * 100) / 100;
+        if (this._cache.length === 0) return 0;
+        const total = this._cache.reduce((sum, p) => sum + (p.vo2max || 0), 0);
+        return Math.round((total / this._cache.length) * 100) / 100;
     },
 
-    /**
-     * Menghitung rata-rata IMT
-     * @returns {number}
-     */
     getAvgBMI() {
-        const data = this.getAll();
-        if (data.length === 0) return 0;
-        const total = data.reduce((sum, p) => sum + (p.imt || 0), 0);
-        return Math.round((total / data.length) * 10) / 10;
+        if (this._cache.length === 0) return 0;
+        const total = this._cache.reduce((sum, p) => sum + (p.imt || 0), 0);
+        return Math.round((total / this._cache.length) * 10) / 10;
     },
 
-    /**
-     * Menghitung rata-rata HR
-     * @returns {number}
-     */
     getAvgHR() {
-        const data = this.getAll();
-        if (data.length === 0) return 0;
-        const total = data.reduce((sum, p) => sum + (p.hr || 0), 0);
-        return Math.round(total / data.length);
+        if (this._cache.length === 0) return 0;
+        const total = this._cache.reduce((sum, p) => sum + (p.hr || 0), 0);
+        return Math.round(total / this._cache.length);
     },
 
-    /**
-     * Mendapatkan distribusi kategori IMT
-     * @returns {Object} { label: count }
-     */
     getBMIDistribution() {
-        const data = this.getAll();
         const dist = { 'Kurus': 0, 'Normal': 0, 'Gemuk': 0, 'Obesitas': 0 };
-        data.forEach(p => {
-            if (p.kategoriIMT) {
-                dist[p.kategoriIMT] = (dist[p.kategoriIMT] || 0) + 1;
-            }
+        this._cache.forEach(p => {
+            if (p.kategoriIMT) dist[p.kategoriIMT] = (dist[p.kategoriIMT] || 0) + 1;
         });
         return dist;
     },
 
-    /**
-     * Mendapatkan distribusi kategori VO2Max
-     * @returns {Object} { label: count }
-     */
     getVO2Distribution() {
-        const data = this.getAll();
         const dist = { 'Istimewa': 0, 'Sangat Baik': 0, 'Baik': 0, 'Sedang': 0, 'Kurang': 0, 'Kurang Sekali': 0 };
-        data.forEach(p => {
-            if (p.kategoriKebugaran) {
-                dist[p.kategoriKebugaran] = (dist[p.kategoriKebugaran] || 0) + 1;
-            }
+        this._cache.forEach(p => {
+            if (p.kategoriKebugaran) dist[p.kategoriKebugaran] = (dist[p.kategoriKebugaran] || 0) + 1;
         });
         return dist;
     },
 
-    /**
-     * Mendapatkan Top ranking berdasarkan VO2Max
-     * @param {number} limit 
-     * @returns {Array}
-     */
     getTopRanking(limit = 10) {
-        const data = this.getAll();
-        return data
+        return [...this._cache]
             .sort((a, b) => (b.vo2max || 0) - (a.vo2max || 0))
             .slice(0, limit);
     },
 
-    /**
-     * Import data dari array (hasil parsing Excel)
-     * @param {Array} importData 
-     */
+    exportToExcel() {
+        return this._cache.map((p, i) => ({
+            'No': i + 1,
+            'Nama': p.nama,
+            'Usia': p.usia,
+            'Jenis Kelamin': p.jenisKelamin,
+            'Tanggal Tes': p.tglTes,
+            'Berat Badan (kg)': p.bb,
+            'Tinggi Badan (cm)': p.tb,
+            'Waktu Menit': p.waktuMenit,
+            'Waktu Detik': p.waktuDetik,
+            'Denyut Nadi (BPM)': p.hr,
+            'VO2Max': p.vo2max,
+            'Kategori Kebugaran': p.kategoriKebugaran,
+            'IMT': p.imt,
+            'Kategori IMT': p.kategoriIMT,
+            'Total MET': p.totalMET,
+            'Kategori IPAQ': p.kategoriIPAQ
+        }));
+    },
+
     importFromExcel(importData) {
-        const data = this.getAll();
-        
+        const newRecords = [];
+
         importData.forEach(item => {
-            // Proses data sesuai format kolom Excel
             const tglLahir = item['Tanggal Lahir'] || item['tgl_lahir'] || '';
             const usia = tglLahir ? Calculations.hitungUsia(tglLahir) : (item['Usia'] || 0);
             const genderStr = String(item['Jenis Kelamin'] || item['jenis_kelamin'] || item['jk'] || item['JK'] || '').trim().toUpperCase();
@@ -190,14 +227,13 @@ const DataStore = {
             const met = parseFloat(item['Total MET'] || item['met'] || 0);
             const ipaq = item['Kategori IPAQ'] || item['ipaq'] || '';
 
-            // Hitung nilai
             const vo2max = Calculations.hitungVO2Max(bb, usia, gender, menit, detik, hr);
             const kategoriKebugaran = Calculations.getKategoriKebugaran(vo2max, usia, gender);
             const imt = Calculations.hitungIMT(bb, tb);
             const kategoriIMT = Calculations.getKategoriIMT(imt);
 
             const peserta = {
-                id: Date.now() + Math.random(),
+                id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
                 nama: item['Nama'] || item['nama'] || '',
                 tglLahir: tglLahir,
                 usia: usia,
@@ -216,44 +252,72 @@ const DataStore = {
                 kategoriIMT: kategoriIMT,
                 totalMET: met,
                 kategoriIPAQ: ipaq,
+                jenisTes: 'baru',
                 createdAt: new Date().toISOString()
             };
 
-            data.push(peserta);
+            this._cache.push(peserta);
+            newRecords.push(peserta);
         });
 
-        this.saveAll(data);
+        this._persist();
+        newRecords.forEach(p => this._asyncAdd(p));
         return importData.length;
-    },
-
-    /**
-     * Export data ke array untuk Excel
-     * @returns {Array}
-     */
-    exportToExcel() {
-        const data = this.getAll();
-        return data.map(p => ({
-            'No': data.indexOf(p) + 1,
-            'Nama': p.nama,
-            'Usia': p.usia,
-            'Jenis Kelamin': p.jenisKelamin,
-            'Tanggal Tes': p.tglTes,
-            'Berat Badan (kg)': p.bb,
-            'Tinggi Badan (cm)': p.tb,
-            'Waktu Menit': p.waktuMenit,
-            'Waktu Detik': p.waktuDetik,
-            'Denyut Nadi (BPM)': p.hr,
-            'VO2Max': p.vo2max,
-            'Kategori Kebugaran': p.kategoriKebugaran,
-            'IMT': p.imt,
-            'Kategori IMT': p.kategoriIMT,
-            'Total MET': p.totalMET,
-            'Kategori IPAQ': p.kategoriIPAQ
-        }));
     }
 };
 
-// Export untuk penggunaan di modul lain
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = DataStore;
-}
+// Separate collection for admin participant database
+const DatabasePeserta = {
+    COLLECTION: 'database_peserta',
+    _cache: [],
+    _db: null,
+
+    init(db) {
+        this._db = db;
+        return this._db.collection(this.COLLECTION).get().then(snapshot => {
+            this._cache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log(`[DatabasePeserta] Loaded ${this._cache.length} records`);
+        }).catch(err => {
+            console.error('[DatabasePeserta] Load error:', err);
+            this._cache = [];
+        });
+    },
+
+    getAll() {
+        return [...this._cache];
+    },
+
+    find(filterFn) {
+        return this._cache.find(filterFn) || null;
+    },
+
+    save(data) {
+        this._cache = [...data];
+        localStorage.setItem('ppg_database_peserta', JSON.stringify(this._cache));
+        if (this._db) {
+            this._db.collection(this.COLLECTION).get().then(snapshot => {
+                const batch = this._db.batch();
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                data.forEach(item => {
+                    const clean = { ...item };
+                    const docId = String(clean.id || Date.now());
+                    delete clean.id;
+                    batch.set(this._db.collection(this.COLLECTION).doc(docId), clean);
+                });
+                return batch.commit();
+            }).catch(err => console.error('[DatabasePeserta] Save error:', err));
+        }
+    },
+
+    clear() {
+        this._cache = [];
+        localStorage.removeItem('ppg_database_peserta');
+        if (this._db) {
+            this._db.collection(this.COLLECTION).get().then(snapshot => {
+                const batch = this._db.batch();
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                return batch.commit();
+            }).catch(err => console.error('[DatabasePeserta] Clear error:', err));
+        }
+    }
+};

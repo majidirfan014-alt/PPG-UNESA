@@ -5,7 +5,6 @@
 
 // ==================== INITIALIZATION ====================
 
-let databasePeserta = [];
 let lastCalculated = null;
 
 // ==================== IPAQ VALUE PARSER ====================
@@ -74,8 +73,12 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeAdmin();
 });
 
-function initializeAdmin() {
-    loadDatabasePeserta();
+async function initializeAdmin() {
+    await DataStore.init();
+    await DatabasePeserta.init(firebase.firestore());
+    if (DatabasePeserta._cache.length === 0) {
+        loadDatabasePeserta();
+    }
     refreshAll();
     updateClock();
     setInterval(updateClock, 1000);
@@ -85,8 +88,7 @@ function initializeAdmin() {
 function clearAllDummyData() {
     if (confirm('Hapus SEMUA data (termasuk data lama dan data baru)?')) {
         DataStore.clearAll();
-        localStorage.removeItem('ppg_database_peserta');
-        databasePeserta = [];
+        DatabasePeserta.clear();
         refreshAll();
         loadDropdownPeserta();
         alert('Semua data berhasil dihapus!');
@@ -96,15 +98,10 @@ function clearAllDummyData() {
 // ==================== DATABASE MANAGEMENT ====================
 
 function loadDatabasePeserta() {
-    const saved = localStorage.getItem('ppg_database_peserta');
-    if (saved) {
-        databasePeserta = JSON.parse(saved);
-    }
-    
-    if (databasePeserta.length === 0) {
+    if (DatabasePeserta._cache.length === 0) {
         const allData = DataStore.getAll();
         if (allData.length > 0) {
-            databasePeserta = allData.filter(p => p.jenisTes !== 'lama').map(p => ({
+            DatabasePeserta._cache = allData.filter(p => p.jenisTes !== 'lama').map(p => ({
                 bib: p.bib,
                 nama: p.nama,
                 gender: p.jenisKelamin || 'Laki-laki',
@@ -123,7 +120,7 @@ function loadDatabasePeserta() {
 }
 
 function saveDatabasePeserta() {
-    localStorage.setItem('ppg_database_peserta', JSON.stringify(databasePeserta));
+    DatabasePeserta.save(DatabasePeserta._cache);
 }
 
 // ==================== NAVIGATION ====================
@@ -328,7 +325,7 @@ function loadDropdownPeserta() {
     const list = document.getElementById('dropdownListPeserta');
     if (!list) return;
     list.innerHTML = '';
-    databasePeserta.forEach(p => {
+    DatabasePeserta._cache.forEach(p => {
         const div = document.createElement('div');
         div.className = 'dd-item';
         div.setAttribute('data-bib', p.bib);
@@ -451,7 +448,7 @@ function simpanWaktuDanHR() {
     const hr = parseInt(inputHR.value);
     if (isNaN(hr) || hr <= 0) { alert('Masukkan denyut nadi yang valid!'); inputHR.focus(); return; }
 
-    const peserta = databasePeserta.find(p => p.bib === bib);
+    const peserta = DatabasePeserta._cache.find(p => p.bib === bib);
     if (!peserta) { alert('Peserta tidak ditemukan!'); return; }
 
     let allData = DataStore.getAll();
@@ -711,7 +708,7 @@ function importPesertaFromExcel(jsonData) {
 
         if (nama && tb && bb) {
             // Generate BIB
-            const newBib = String(databasePeserta.length + 1).padStart(3, '0');
+            const newBib = String(DatabasePeserta._cache.length + 1).padStart(3, '0');
             
             // Parse gender
             let genderText = 'Laki-laki';
@@ -741,7 +738,7 @@ function importPesertaFromExcel(jsonData) {
                 kategoriIMT: kategoriIMT
             };
 
-            databasePeserta.push(pesertaBaru);
+            DatabasePeserta._cache.push(pesertaBaru);
             importCount++;
         }
     });
@@ -852,7 +849,7 @@ function prosesImportExcel() {
                 
                 // Kosongkan database
                 dataPeserta = [];
-                databasePeserta = [];
+                DatabasePeserta._cache = [];
 
                 // Proses data mulai dari baris ke-2 (index 1)
                 for (let i = 1; i < jsonData.length; i++) {
@@ -894,13 +891,13 @@ function prosesImportExcel() {
                     const tbMeter = tb / 100;
                     const imt = (bb / (tbMeter * tbMeter)).toFixed(2);
 
-                    // Simpan ke databasePeserta (registrasi)
+                    // Simpan ke DatabasePeserta._cache (registrasi)
                     // Deteksi JK: L/Laki-laki/Laki/Pria/1 = Laki-laki, P/Perempuan/0 = Perempuan
                     const isPerempuan = (jkRaw === '0' || jkRaw === 'P' || jkRaw === 'PEREMPUAN' || jkRaw === 'WANITA');
                     const genderText = isPerempuan ? 'Perempuan' : 'Laki-laki';
                     const genderValue = isPerempuan ? 0 : 1;
 
-                    databasePeserta.push({
+                    DatabasePeserta._cache.push({
                         bib: bib,
                         nama: nama,
                         gender: genderText,

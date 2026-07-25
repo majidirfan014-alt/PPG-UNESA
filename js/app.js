@@ -30,7 +30,8 @@ function migrateDataIds() {
     if (changed) DataStore.saveAll(data);
 }
 
-function initializeApp() {
+async function initializeApp() {
+    await DataStore.init();
     migrateDataIds();
     initDataTable();
     initCharts();
