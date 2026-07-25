@@ -71,7 +71,7 @@ const Calculations = {
             // Usia 50-59
             { usiaMin: 50, usiaMax: 59, pria: [45.0, 41.0, 37.5, 34.5, 31.0], wanita: [38.0, 34.5, 31.0, 28.0, 25.5] },
             // Usia 60+
-            { usiaMin: 60, usiaMax: 100, pria: [43.0, 39.5, 36.0, 32.5, 29.5], wanita: [36.5, 33.0, 29.5, 26.5, 24.0] }
+            { usiaMin: 60, usiaMax: 100, pria: [43.0, 39.5, 36.0, 34.5, 31.5], wanita: [36.5, 33.0, 29.5, 26.5, 24.0] }
         ];
 
         // Cari rentang usia yang sesuai
