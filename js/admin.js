@@ -925,7 +925,7 @@ function prosesImportExcel() {
                         kategoriKebugaran: '-',
                         imt: parseFloat(imt),
                         kategoriIMT: Calculations.getKategoriIMT(parseFloat(imt)),
-                        totalMET: hasilIPAQ.total_met,
+                        totalMET: parseInt(hasilIPAQ.total) || 0,
                         kategoriIPAQ: hasilIPAQ.kategori,
                         ipaq_sport_freq: sportFreq,
                         ipaq_sport_dur: sportDur,
