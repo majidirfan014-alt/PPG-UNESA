@@ -574,14 +574,20 @@ function importIPAQ() {
             const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
             jsonData.forEach(item => {
-                const hariBerat = parseIPAQValue(item['Hari Aktivitas Berat'] || item['hari_berat']);
-                const menitBerat = parseIPAQValue(item['Menit Aktivitas Berat'] || item['menit_berat']);
-                const hariSedang = parseIPAQValue(item['Hari Aktivitas Sedang'] || item['hari_sedang']);
-                const menitSedang = parseIPAQValue(item['Menit Aktivitas Sedang'] || item['menit_sedang']);
-                const hariJalan = parseIPAQValue(item['Hari Jalan Kaki'] || item['hari_jalan']);
-                const menitJalan = parseIPAQValue(item['Menit Jalan Kaki'] || item['menit_jalan']);
+                const sportFreq = parseIPAQValue(item['Frekuensi Olahraga'] || item['Hari Olahraga'] || item['freq_olahraga']);
+                const sportDur = parseIPAQValue(item['Durasi Olahraga'] || item['Menit Olahraga'] || item['durasi_olahraga']);
+                const hariBerat = parseIPAQValue(item['Hari Aktivitas Berat'] || item['hari_berat'] || item['Frekuensi Aktivitas Berat']);
+                const menitBerat = parseIPAQValue(item['Menit Aktivitas Berat'] || item['menit_berat'] || item['Durasi Aktivitas Berat']);
+                const hariSedang = parseIPAQValue(item['Hari Aktivitas Sedang'] || item['hari_sedang'] || item['Frekuensi Aktivitas Sedang']);
+                const menitSedang = parseIPAQValue(item['Menit Aktivitas Sedang'] || item['menit_sedang'] || item['Durasi Aktivitas Sedang']);
+                const hariJalan = parseIPAQValue(item['Hari Jalan Kaki'] || item['hari_jalan'] || item['Frekuensi Berjalan']);
+                const menitJalan = parseIPAQValue(item['Menit Jalan Kaki'] || item['menit_jalan'] || item['Durasi Berjalan']);
 
-                const result = Calculations.hitungIPAQ(hariBerat, menitBerat, hariSedang, menitSedang, hariJalan, menitJalan);
+                const sportWeeklyMin = sportDur || 0;
+                const vigDaysCombined = hariBerat + sportFreq;
+                const vigMinCombined = menitBerat + Math.round(sportWeeklyMin / 7);
+
+                const result = Calculations.hitungIPAQ(vigDaysCombined, vigMinCombined, hariSedang, menitSedang, hariJalan, menitJalan);
                 
                 const nama = item['Nama'] || item['nama'];
                 if (nama) {
@@ -591,8 +597,10 @@ function importIPAQ() {
                         DataStore.update(peserta.id, {
                             totalMET: result.total_met,
                             kategoriIPAQ: result.kategori,
-                            ipaq_v_days: hariBerat,
-                            ipaq_v_min: menitBerat,
+                            ipaq_sport_freq: sportFreq,
+                            ipaq_sport_dur: sportDur,
+                            ipaq_v_days: vigDaysCombined,
+                            ipaq_v_min: vigMinCombined,
                             ipaq_m_days: hariSedang,
                             ipaq_m_min: menitSedang,
                             ipaq_w_days: hariJalan,
@@ -863,9 +871,16 @@ function prosesImportExcel() {
                     const q6 = parseIPAQValue(getValue(row, columns.q6));
                     const q7 = parseIPAQValue(getValue(row, columns.q7));
                     const q8 = parseIPAQValue(getValue(row, columns.q8));
+                    const sportFreq = parseIPAQValue(getValue(row, columns.sport_freq));
+                    const sportDur = parseIPAQValue(getValue(row, columns.sport_dur));
+                    const sedentary = parseIPAQValue(getValue(row, columns.sedentary));
 
-                    // Hitung IPAQ
-                    const hasilIPAQ = kalkulasiIPAQ(q3, q4, q5, q6, q7, q8);
+                    // Olahraga: durasi sudah menit/minggu, fold ke vigorous (MET 8.0)
+                    const sportWeeklyMin = sportDur || 0;
+                    const vigDaysCombined = q3 + sportFreq;
+                    const vigMinCombined = q4 + Math.round(sportWeeklyMin / 7);
+
+                    const hasilIPAQ = kalkulasiIPAQ(vigDaysCombined, vigMinCombined, q5, q6, q7, q8);
 
                     // Hitung IMT
                     const tbMeter = tb / 100;
@@ -912,12 +927,15 @@ function prosesImportExcel() {
                         kategoriIMT: Calculations.getKategoriIMT(parseFloat(imt)),
                         totalMET: hasilIPAQ.total_met,
                         kategoriIPAQ: hasilIPAQ.kategori,
-                        ipaq_v_days: q3,
-                        ipaq_v_min: q4,
+                        ipaq_sport_freq: sportFreq,
+                        ipaq_sport_dur: sportDur,
+                        ipaq_v_days: vigDaysCombined,
+                        ipaq_v_min: vigMinCombined,
                         ipaq_m_days: q5,
                         ipaq_m_min: q6,
                         ipaq_w_days: q7,
                         ipaq_w_min: q8,
+                        ipaq_sedentary: sedentary,
                         jenisTes: 'baru'
                     };
                     DataStore.add(pesertaForLanding);
@@ -961,10 +979,11 @@ function prosesImportExcel() {
 function mapColumns(headers) {
     const columns = {
         bib: -1, nama: -1, jk: -1, usia: -1, tb: -1, bb: -1, jabatan: -1,
-        q3: -1, q4: -1, q5: -1, q6: -1, q7: -1, q8: -1
+        sport_freq: -1, sport_dur: -1,
+        q3: -1, q4: -1, q5: -1, q6: -1, q7: -1, q8: -1,
+        sedentary: -1
     };
 
-    // Kata kunci untuk pencarian kolom
     const keywords = {
         bib: ['bib', 'no bib', 'nomor', 'no'],
         nama: ['nama', 'nama lengkap', 'name'],
@@ -973,15 +992,17 @@ function mapColumns(headers) {
         tb: ['tinggi', 'tinggi badan', 'height', 'tb', 'tinggi badan (cm)'],
         bb: ['berat', 'berat badan', 'weight', 'bb', 'berat badan (kg)'],
         jabatan: ['jabatan', 'position', 'job', 'pekerjaan'],
+        sport_freq: ['frekuensi olahraga', 'freq olahraga', 'olahraga (hari', 'sport freq'],
+        sport_dur: ['durasi olahraga', 'olahraga (menit', 'sport dur'],
         q3: ['frekuensi aktivitas berat', 'q3', 'q 3', 'freq berat', '3.'],
         q4: ['durasi aktivitas berat', 'q4', 'q 4', 'durasi berat', '4.'],
         q5: ['frekuensi aktivitas sedang', 'q5', 'q 5', 'freq sedang', '5.'],
         q6: ['durasi aktivitas sedang', 'q6', 'q 6', 'durasi sedang', '6.'],
         q7: ['frekuensi berjalan', 'q7', 'q 7', 'freq jalan', '7.'],
-        q8: ['durasi berjalan', 'q8', 'q 8', 'durasi jalan', '8.']
+        q8: ['durasi berjalan', 'q8', 'q 8', 'durasi jalan', '8.'],
+        sedentary: ['waktu duduk', 'sedentari', 'sedentary', 'duduk (menit']
     };
 
-    // Cari kolom berdasarkan nama header
     headers.forEach((header, index) => {
         if (!header) return;
         const headerLower = String(header).toLowerCase().trim();
@@ -998,22 +1019,22 @@ function mapColumns(headers) {
         }
     });
 
-    // Jika kolom penting tidak ditemukan, gunakan fallback berdasarkan urutan
-    // Asumsi urutan standar: Bib, Nama, JK, Usia, TB, BB, Jabatan, Q3-Q8
-    if (columns.nama === -1) columns.nama = 1; // Kolom B (index 1)
-    if (columns.jk === -1) columns.jk = 2;     // Kolom C (index 2)
-    if (columns.usia === -1) columns.usia = 3; // Kolom D (index 3)
-    if (columns.tb === -1) columns.tb = 4;     // Kolom E (index 4)
-    if (columns.bb === -1) columns.bb = 5;     // Kolom F (index 5)
+    if (columns.nama === -1) columns.nama = 1;
+    if (columns.jk === -1) columns.jk = 2;
+    if (columns.usia === -1) columns.usia = 3;
+    if (columns.tb === -1) columns.tb = 4;
+    if (columns.bb === -1) columns.bb = 5;
     
-    // Jika IPAQ tidak ditemukan, coba berdasarkan posisi (kolom ke-8 dst)
-    if (columns.q3 === -1 && headers.length >= 10) {
-        columns.q3 = 7;  // Kolom H
-        columns.q4 = 8;  // Kolom I
-        columns.q5 = 9;  // Kolom J
-        columns.q6 = 10; // Kolom K
-        columns.q7 = 11; // Kolom L
-        columns.q8 = 12; // Kolom M
+    if (columns.sport_freq === -1 && headers.length >= 14) {
+        columns.sport_freq = 7;  // Kolom H
+        columns.sport_dur = 8;   // Kolom I
+        columns.q3 = 9;          // Kolom J
+        columns.q4 = 10;         // Kolom K
+        columns.q5 = 11;         // Kolom L
+        columns.q6 = 12;         // Kolom M
+        columns.q7 = 13;         // Kolom N
+        columns.q8 = 14;         // Kolom O
+        columns.sedentary = 15;  // Kolom P
     }
 
     return columns;
