@@ -1155,7 +1155,7 @@ function prosesImportDataLama() {
             const headers = jsonData[0];
             const colMap = mapColumnsDataLama(headers);
 
-            let allData = DataStore.getAll();
+            let allData = DataStore.getAll().filter(p => p.jenisTes !== 'lama');
             let addCount = 0;
             let detailResults = [];
 
